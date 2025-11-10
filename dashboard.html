@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ValiTec MJ — Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <canvas id="particleCanvas"></canvas>
+
+  <div class="app-container">
+    <aside class="sidebar">
+  <h1>ValiTec MJ</h1>
+  <nav>
+  <a href="dashboard.html" class="active">Painel</a>
+  <a href="lista-produtos.html">Produtos</a>
+  <a href="calendario.html">Calendário</a>
+  <a href="perfil.html">Perfil</a>
+  <a href="#" onclick="localStorage.clear(); location.href='index.html'">Sair</a>
+</nav>
+</aside>
+
+    <main class="main">
+      <div id="modalSetor" class="modal hidden" style="
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+  background: rgba(0,0,0,0.55);
+">
+  <div style="
+    background: rgba(15,25,45,0.96);
+    border: 1px solid var(--accent);
+    padding: 20px;
+    border-radius: 12px;
+    width: 320px;
+  ">
+    <h3 style="margin-bottom:12px;">Resumo por Setor</h3>
+    <div id="listaSetores"></div>
+    <button id="fecharSetor" style="margin-top:15px;width:100%;padding:8px;border:none;border-radius:8px;background:var(--accent);color:#000;font-weight:bold;">Fechar</button>
+  </div>
+</div>
+      <h2>Painel de Indicadores</h2>
+
+    <div id="seletorLoja" style="display:none; margin:10px 0;">
+  <label style="color:#7deaff;">Selecionar Loja:</label>
+  <select id="selectLoja"></select>
+</div>
+
+      <div class="cards">
+        <div class="card"><span class="icon">⏳</span><span class="number">0</span><span class="label">Perto de Vencer</span></div>
+        <div class="card"><span class="icon">📅</span><span class="number">0</span><span class="label">Vencendo Hoje</span></div>
+        <div class="card"><span class="icon">⚠️</span><span class="number">0</span><span class="label">Vencidos</span></div>
+        <div class="card"><span class="icon">📦</span><span class="number">0</span><span class="label">Total de Produtos</span></div>
+        <div class="card"><span class="icon">🏷️</span><span class="number">0</span><span class="label">Resumo por Setor</span></div>
+      </div>
+    </main>
+  </div>
+
+<script>
+// --- Menu Hambúrguer ---
+const sidebar = document.querySelector('.sidebar');
+const hamburger = document.createElement('button');
+hamburger.className = 'hamburger';
+hamburger.textContent = '☰';
+hamburger.onclick = () => sidebar.classList.toggle('open');
+document.body.appendChild(hamburger);
+
+// --- Partículas de Fundo ---
+const canvas = document.getElementById('particleCanvas');
+if(canvas){
+  const ctx = canvas.getContext('2d');
+  function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
+  window.addEventListener('resize', resize); resize();
+
+  const particles = Array.from({length: 60}, () => ({
+    x: Math.random()*canvas.width,
+    y: Math.random()*canvas.height,
+    r: Math.random()*2+1,
+    sx: (Math.random()-0.5)*0.6,
+    sy: (Math.random()-0.5)*0.6
+  }));
+
+  function animate(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach(p=>{
+      p.x+=p.sx; p.y+=p.sy;
+      if(p.x<0)p.x=canvas.width; if(p.x>canvas.width)p.x=0;
+      if(p.y<0)p.y=canvas.height; if(p.y>canvas.height)p.y=0;
+      ctx.fillStyle='rgba(255,255,255,0.07)';
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+    });
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+// --- Ícones Neon Personalizados ---
+document.querySelectorAll('.card .icon').forEach(el=>{
+  el.style.filter = 'drop-shadow(0 0 8px rgba(0,119,255,0.8))';
+});
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
+  authDomain: "valitec-mj.firebaseapp.com",
+  projectId: "valitec-mj",
+  storageBucket: "valitec-mj.firebasestorage.app",
+  messagingSenderId: "616592039657",
+  appId: "1:616592039657:web:3827a890474111be85da78"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+const cardPerto = document.querySelectorAll('.number')[0];
+const cardHoje  = document.querySelectorAll('.number')[1];
+const cardVencidos = document.querySelectorAll('.number')[2];
+const cardTotal = document.querySelectorAll('.number')[3];
+const cardSetor = document.querySelectorAll('.number')[4];
+
+const lojasLista = [
+  "loja_cd_cidade",
+  "loja_cidade",
+  "loja_terranova",
+  "loja_manoa",
+  "loja_zumbi",
+  "loja_oswaldo",
+  "loja_mosaico"
+];
+
+let lojaAtual = null;
+
+async function carregarDashboard() {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const userRef = doc(db, "usuarios", user.email);
+  const snap = await getDoc(userRef);
+  const cargo = snap.data().cargo;
+  const loja = snap.data().loja;
+
+  // Se for gerente → só carrega a própria loja
+  if (cargo !== "master") {
+    lojaAtual = loja;
+    document.getElementById("selectLoja")?.remove();
+  } else {
+    // Se for MASTER → libera seleção
+    document.getElementById("seletorLoja").style.display = "block";
+    const select = document.getElementById("selectLoja");
+    lojasLista.forEach(l => {
+      const opt = document.createElement("option");
+      opt.value = l;
+      opt.textContent = l;
+      select.appendChild(opt);
+    });
+    select.onchange = () => { lojaAtual = select.value; atualizar() };
+    lojaAtual = lojasLista[0];
+  }
+
+  atualizar();
+}
+
+// Atualiza dados
+async function atualizar() {
+
+  document.querySelectorAll('.card')[4].onclick = abrirResumoSetor;
+document.getElementById("fecharSetor").onclick = () => {
+  document.getElementById("modalSetor").classList.add("hidden");
+};
+  const ref = collection(db, `lojas/${lojaAtual}/produtos`);
+  const snap = await getDocs(ref);
+
+  let total = 0;
+  let hojeVence = 0;
+  let vencidos = 0;
+  let perto = 0;
+
+  const hoje = new Date();
+
+  snap.forEach(d => {
+    const p = d.data();
+    total++;
+    const validade = new Date(p.dataValidadeISO);
+    const diff = Math.ceil((validade - hoje) / (1000*60*60*24));
+
+    if (diff < 0) vencidos++;
+    else if (diff === 0) hojeVence++;
+    else if (diff <= 7) perto++;
+  });
+
+  cardPerto.textContent = perto;
+  cardHoje.textContent = hojeVence;
+  cardVencidos.textContent = vencidos;
+  cardTotal.textContent = total;
+  cardSetor.textContent = "-"; // Próximo passo → gráfico por setor
+}
+
+onAuthStateChanged(auth, carregarDashboard);
+
+async function abrirResumoSetor() {
+  const ref = collection(db, `lojas/${lojaAtual}/produtos`);
+  const snap = await getDocs(ref);
+
+  const contagem = {
+    Mercearia: 0, Bebidas: 0, Frios: 0,
+    Higiene: 0, Limpeza: 0, Açougue: 0
+  };
+
+  snap.forEach(d => {
+    const p = d.data();
+    if (contagem[p.setor] !== undefined) contagem[p.setor]++;
+  });
+
+  const lista = document.getElementById("listaSetores");
+  lista.innerHTML = "";
+
+  Object.keys(contagem).forEach(setor => {
+    const linha = document.createElement("div");
+    linha.style = "display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.08)";
+    linha.innerHTML = `<span>${setor}</span><strong>${contagem[setor]}</strong>`;
+    lista.appendChild(linha);
+  });
+
+  document.getElementById("modalSetor").classList.remove("hidden");
+}
+</script>
+
+
+</body>
+</html>
