@@ -94,12 +94,25 @@ async function carregarCalendario() {
   const hoje = new Date();
   const ano = dataRef.getFullYear();
   const mes = dataRef.getMonth();
-  const totalDias = diasNoMes(ano, mes);
+  const totalDias = diasNoMes(ano, mes); // ✅ AGORA ESTÁ DEFINIDO
 
   document.getElementById("mesTitulo").textContent =
-    dataRef.toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
+    dataRef.toLocaleDateString("pt-BR", { month:'long', year:'numeric' });
+
 
   calendarContainer.innerHTML = "";
+
+// ✅ ALINHAMENTO CORRETO DO CALENDÁRIO
+const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
+for (let i = 0; i < primeiroDiaSemana; i++) {
+  const vazio = document.createElement("div");
+  vazio.className = "dia-calendario";
+  vazio.style.background = "transparent";
+  vazio.style.border = "none";
+  vazio.style.cursor = "default";
+  vazio.textContent = "";
+  calendarContainer.appendChild(vazio);
+}
 
   for (let dia = 1; dia <= totalDias; dia++) {
     const dataAtual = new Date(ano, mes, dia);
@@ -108,37 +121,41 @@ async function carregarCalendario() {
     snap.forEach(docItem => {
       const p = docItem.data();
       if (!p.dataValidadeISO) return;
+      if (p.status === "rebaixado") return; // ✅ NÃO MOSTRA REBAIXADO
+
       const venc = new Date(p.dataValidadeISO);
-
-      if (p.status === "rebaixado") return; // <-- NOVO
-
       if (venc.toDateString() === dataAtual.toDateString()) {
         produtosDoDia.push(p);
       }
     });
 
-let cor = "rgba(0,200,255,0.6)"; // padrão
-
-produtosDoDia.forEach(p => {
-
-  // ✅ Não mostrar rebaixados
-  if (p.status === "rebaixado") return;
-
-  const venc = new Date(p.dataValidadeISO);
-  const diff = Math.ceil((venc - hoje) / 86400000);
-
-  if (diff < 0) cor = "#ff4d4d";        // Vencido
-  else if (diff <= 5) cor = "#ff4d4d"; // Até 05 dias
-  else if (diff <= 10) cor = "#ff7a29";  // Até 10 dias
-  else if (diff <= 15) cor = "#ffd93d";  // Até 15 dias
-  else cor = "rgba(0,200,255,0.6)";
-});
-
+    // ✅ Cria o quadrado do dia
     const cell = document.createElement("div");
     cell.className = "dia-calendario";
     cell.textContent = dia;
-    cell.style.borderColor = cor;
 
+    // ✅ Cor padrão
+    let cor = "rgba(0,200,255,0.45)";
+
+    // ✅ Aplica lógica das cores
+    produtosDoDia.forEach(p => {
+      const venc = new Date(p.dataValidadeISO);
+      const diff = Math.ceil((venc - hoje) / 86400000);
+
+      if (diff < 0 || diff === 0) cor = "  color: #690000cc";  
+      else if (diff <= 5) cor = "#ff4d4d";       // vermelho
+      else if (diff <= 10) cor = "#ff7a29";     // laranja
+      else if (diff <= 15) cor = "#ffd93d";    // amarelo
+    });
+
+    // ✅ Preenche quadrado inteiro
+    cell.style.background = cor;
+    cell.style.border = "none";
+
+    // ✅ Ajuste de cor do texto
+    cell.style.color = (cor === "#ffd93d" || cor === "#ff7a29") ? "#000" : "#fff";
+
+    // ✅ Clicar abre modal se houver produtos
     if (produtosDoDia.length > 0) {
       cell.style.cursor = "pointer";
       cell.onclick = () => abrirModal(produtosDoDia);
@@ -147,6 +164,7 @@ produtosDoDia.forEach(p => {
     calendarContainer.appendChild(cell);
   }
 }
+
 
 function abrirModal(lista) {
   modalLista.innerHTML = "";

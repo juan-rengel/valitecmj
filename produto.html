@@ -88,7 +88,18 @@ const btnOpenCamera = document.getElementById('btnOpenCamera');
 const btnCapturar = document.getElementById('btnCapturar');
 
 btnOpenCamera.onclick = async () => {
-  stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+  try {
+  stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: "environment" } },
+    audio: false
+  });
+} catch {
+  // Se não achar câmera traseira, usa qualquer câmera disponível
+  stream = await navigator.mediaDevices.getUserMedia({
+    video: true,
+    audio: false
+  });
+}
   cameraPreview.srcObject = stream;
   cameraPreview.style.display = "block";
   btnCapturar.style.display = "inline-block";

@@ -109,21 +109,31 @@ function exibirLista(listaProdutos) {
     });
     item.appendChild(btnW);
 
-   const btnConfirm = document.createElement("button");
-btnConfirm.textContent = "✅ Confirmar Rebaixa";
-btnConfirm.className = "btnConfirm";
-btnConfirm.addEventListener("click", async () => {
+ // === CALCULA DIAS PARA VENCER ===
+const hoje = new Date();
+const validade = new Date(p.dataValidadeISO);
+const diff = Math.ceil((validade - hoje) / (1000*60*60*24)); // dias restantes
 
-  // Buscar loja correta do usuário
-  const uSnap = await getDoc(doc(db, "usuarios", auth.currentUser.email));
-  const loja = uSnap.data().loja;
+// === DEFINE A COR DO BOTÃO ===
+let corBtn = "#e6e6e6cc"; // padrão seguro
 
-  await updateDoc(doc(db, `lojas/${loja}/produtos/${p.id}`), {
-    status: "rebaixado"
-  });
+if (diff <= 5) corBtn = "#ff4d4d";        // vermelho urgente
+else if (diff <= 10) corBtn = "#ff9f43";  // laranja
+else if (diff <= 15) corBtn = "#ffe66d";  // amarelo
 
-  carregarProdutos();
-});
+// === BOTÃO CONFIRMAR REBAIXA ===
+const btnConfirm = document.createElement("button");
+btnConfirm.textContent = `✅ Rebaixar (${diff}d)`; // mostra quantos dias faltam
+btnConfirm.style.background = corBtn;
+btnConfirm.style.color = "#000";
+btnConfirm.style.padding = "8px 10px";
+btnConfirm.style.borderRadius = "6px";
+btnConfirm.style.fontWeight = "600";
+btnConfirm.style.cursor = "pointer";
+btnConfirm.onclick = async () => {
+  await updateDoc(doc(db, `lojas/${loja}/produtos/${p.id}`), { status: "rebaixado" });
+  carregarProdutos(); // atualiza lista
+};
 item.appendChild(btnConfirm);
 
     // Botão Editar ✏️
