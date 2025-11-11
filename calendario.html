@@ -128,7 +128,7 @@ produtosDoDia.forEach(p => {
   const diff = Math.ceil((venc - hoje) / 86400000);
 
   if (diff < 0) cor = "#ff4d4d";        // Vencido
-  else if (diff === 5) cor = "#ff4d4d"; // Até 05 dias
+  else if (diff <= 5) cor = "#ff4d4d"; // Até 05 dias
   else if (diff <= 10) cor = "#ff7a29";  // Até 10 dias
   else if (diff <= 15) cor = "#ffd93d";  // Até 15 dias
   else cor = "rgba(0,200,255,0.6)";
