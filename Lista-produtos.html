@@ -24,7 +24,7 @@
     </aside>
 
     <main class="main">
-      <h2>Produtos Cadastrados</h2>
+      <h2 style="text-align: center;">Produtos Cadastrados</h2>
 <input type="text" id="busca" placeholder="🔍 Buscar por nome, setor ou código..." 
 style="margin-bottom: 16px; padding: 10px 14px; width:100%; border-radius:12px; border:1px solid rgba(255,255,255,0.25); background:rgba(20,28,47,0.45); color:white; outline:none;">
 
@@ -118,14 +118,13 @@ function exibirLista(listaProdutos) {
     item.appendChild(btnConfirm);
 
     // Botão Editar ✏️
-    const btnEdit = document.createElement("button");
-    btnEdit.textContent = "✏️ Editar";
-    btnEdit.className = "btnEdit";
-    btnEdit.addEventListener("click", () => {
-      localStorage.setItem("produtoEdicaoId", p.id);
-      window.location.href = "produtos.html";
-    });
-    item.appendChild(btnEdit);
+const btnEdit = document.createElement("button");
+btnEdit.textContent = "✏️ Editar";
+btnEdit.className = "btnEdit";
+btnEdit.addEventListener("click", () => {
+  window.location.href = `produtos.html?id=${p.id}`;
+});
+item.appendChild(btnEdit);
 
     lista.appendChild(item);
   });
@@ -143,6 +142,74 @@ document.getElementById("busca")?.addEventListener("input", (e) => {
 });
 
 auth.onAuthStateChanged(carregarProdutos);
+
+
+// --- Verifica se é edição ---
+const params = new URLSearchParams(window.location.search);
+const produtoIdEdicao = params.get("id");
+
+if (produtoIdEdicao) {
+  // Muda o título e botão
+  document.querySelector("h2").textContent = "Editar Produto";
+  document.querySelector(".btnSalvar").textContent = "Salvar Alterações";
+
+  // Carrega dados do produto
+  auth.onAuthStateChanged(async user => {
+    if (!user) return;
+    const snapUser = await getDoc(doc(db, "usuarios", user.email));
+    const loja = snapUser.data().loja;
+
+    const prodRef = doc(db, `lojas/${loja}/produtos/${produtoIdEdicao}`);
+    const prodSnap = await getDoc(prodRef);
+    const p = prodSnap.data();
+
+    nome.value = p.nome;
+    codigo.value = p.codigo;
+    lote.value = p.lote;
+    setor.value = p.setor;
+    validade.value = p.dataValidadeISO;
+    previewFoto.src = p.fotoURL;
+    previewFoto.style.display = "block";
+
+    // Evita foto obrigatória ao editar
+    document.getElementById("foto").required = false;
+  });
+
+  // Salvar alteração
+  formProduto.onsubmit = async (e) => {
+    e.preventDefault();
+    const user = auth.currentUser;
+    const snapUser = await getDoc(doc(db, "usuarios", user.email));
+    const loja = snapUser.data().loja;
+
+    const isoDate = validade.value;
+    const [yyyy, mm, dd] = isoDate.split("-");
+    const brDate = `${dd}/${mm}/${yyyy}`;
+
+    let fotoURLFinal = previewFoto.src;
+
+    // Se nova foto foi capturada
+    if (foto.files.length > 0) {
+      const fotoRef = ref(storage, `${loja}/${produtoIdEdicao}.jpg`);
+      await uploadBytes(fotoRef, foto.files[0]);
+      fotoURLFinal = await getDownloadURL(fotoRef);
+    }
+
+    await setDoc(doc(db, `lojas/${loja}/produtos/${produtoIdEdicao}`), {
+      nome: nome.value,
+      codigo: codigo.value,
+      lote: lote.value,
+      setor: setor.value,
+      dataValidadeISO: isoDate,
+      dataValidadeBR: brDate,
+      fotoURL: fotoURLFinal,
+      status: "normal",
+    }, { merge: true });
+
+    window.location.href = "lista-produtos.html";
+  };
+}
+
 </script>
 
 
@@ -216,6 +283,18 @@ function connectParticles() {
 }
 
 draw();
+
+
+</script>
+
+<script>
+// --- Menu Hambúrguer --- //
+const sidebar = document.querySelector('.sidebar');
+const hamburger = document.createElement('button');
+hamburger.className = 'hamburger';
+hamburger.textContent = '☰';
+hamburger.onclick = () => sidebar.classList.toggle('open');
+document.body.appendChild(hamburger);
 </script>
 </body>
 </html>

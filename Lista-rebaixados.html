@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ValiTec MJ — Perfil</title>
+  <title>ValiTec MJ — Rebaixados</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="dashboard.css">
 </head>
@@ -12,36 +12,25 @@
 
   <div class="app-container">
     <aside class="sidebar">
-      <h1> <br></h1>
+   <h1> <br></h1>
       <nav>
         <a href="dashboard.html">Painel</a>
-        <a href="produtos.html">Cadastrar Produto</a>
-        <a href="lista-produtos.html">Lista de Produtos</a>
-        <a href="perfil.html" class="active">Perfil</a>
+        <a href="lista-produtos.html">Produtos</a>
+        <a href="lista-rebaixados.html" class="active">Rebaixados</a>
+        <a href="perfil.html">Perfil</a>
         <a href="#" onclick="localStorage.clear(); location.href='index.html'">Sair</a>
       </nav>
     </aside>
 
     <main class="main">
-      <h2 style="text-align: center;">Configurações do Perfil</h2>
-	
-	<div class="form-perfil">
-
-  <label>Seu WhatsApp (Gerente)</label>
-  <input type="text" id="whatsGerente" placeholder="Ex: 92988001122" required>
-
-  <label>WhatsApp do Responsável pela Rebaixa</label>
-  <input type="text" id="whatsResponsavel" placeholder="Ex: 92991234567" required>
-
-  <button id="salvarPerfil" class="btnSalvar">Salvar</button>
-</div>
-
+      <h2 style="text-align: center;">Produtos Rebaixados</h2>
+      <div id="listaRebaixados" class="lista-produtos"></div>
     </main>
   </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, query, where, getDocs, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -57,20 +46,59 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-document.getElementById("salvarPerfil").addEventListener("click", async () => {
+async function carregarRebaixados() {
   const user = auth.currentUser;
-  if (!user) return alert("⚠️ Faça login novamente.");
+  if (!user) return;
 
-  const w1 = document.getElementById("whatsGerente").value.replace(/\D/g, "");
-  const w2 = document.getElementById("whatsResponsavel").value.replace(/\D/g, "");
+  const userRef = doc(db, "usuarios", user.email);
+  const userSnap = await getDoc(userRef);
+  const loja = userSnap.data().loja;
 
-  await setDoc(doc(db, "gerentes", user.email), {
-    whatsGerente: w1,
-    whatsResponsavel: w2
-  }, { merge: true });
+  const ref = collection(db, `lojas/${loja}/produtos`);
+  const q = query(ref, where("status", "==", "rebaixado"));
+  const snap = await getDocs(q);
 
-  alert("✅ WhatsApp salvo com sucesso!");
+  const lista = document.getElementById('listaRebaixados');
+  lista.innerHTML = '';
+}
+  snap.forEach(doc => {
+  const p = doc.data();
+
+  const item = document.createElement('div');
+  item.className = 'produto-card';
+  item.style.display = 'flex';
+  item.style.alignItems = 'center';
+  item.style.gap = '12px';
+  item.style.padding = '12px';
+  item.style.borderRadius = '8px';
+  item.style.marginBottom = '12px';
+  item.style.background = '#3a3f47';
+  item.style.border = '1px solid #4eff9a';
+  item.style.opacity = '0.85';
+
+  // Imagem
+  const img = document.createElement('img');
+  img.src = p.fotoURL || '';
+  img.style.width = '70px';
+  img.style.height = '70px';
+  img.style.objectFit = 'cover';
+  img.style.borderRadius = '6px';
+
+  // Info
+  const info = document.createElement('div');
+  info.innerHTML = `
+    <strong>${p.nome}</strong><br>
+    ${p.setor}<br>
+    Validade: ${p.dataValidadeBR}<br>
+    <span style="color:#4eff9a;font-weight:bold;">✅ REBAIXADO</span>
+  `;
+
+  item.appendChild(img);
+  item.appendChild(info);
+  lista.appendChild(item);
 });
+
+auth.onAuthStateChanged(carregarRebaixados);
 </script>
 
 <script>
@@ -144,6 +172,7 @@ function connectParticles() {
 
 draw();
 </script>
+
 <script>
 // --- Menu Hambúrguer --- //
 const sidebar = document.querySelector('.sidebar');
@@ -153,5 +182,6 @@ hamburger.textContent = '☰';
 hamburger.onclick = () => sidebar.classList.toggle('open');
 document.body.appendChild(hamburger);
 </script>
+
 </body>
 </html>

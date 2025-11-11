@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ValiTec MJ — Cadastro de Produto</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <canvas id="particleCanvas"></canvas>
+
+  <div class="app-container">
+    <aside class="sidebar">
+      <h1> <br></h1>
+      <nav>
+        <a href="dashboard.html">Painel</a>
+        <a href="lista-produtos.html">Produtos</a>
+        <a href="produtos.html" class="active">Novo Produto</a>
+        <a href="perfil.html">Perfil</a>
+        <a href="#" onclick="localStorage.clear(); location.href='index.html'">Sair</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <h2 style="text-align: center;">Cadastrar Produto</h2>
+
+      <form id="formProduto" class="form-produto">
+        <label>Nome do Produto</label>
+        <input type="text" id="nome" required>
+
+        <label>Código de Barras</label>
+        <input type="text" id="codigo" placeholder="Escanear ou digitar" required>
+
+        <label>Lote</label>
+        <input type="text" id="lote" required>
+
+        <label>Setor</label>
+        <select id="setor" required>
+          <option value="Mercearia">Mercearia</option>
+          <option value="Bebidas">Bebidas</option>
+          <option value="Frios">Frios</option>
+          <option value="Higiene">Higiene</option>
+          <option value="Limpeza">Limpeza</option>
+          <option value="Açougue">Açougue</option>
+        </select>
+
+        <label>Data de Validade</label>
+        <input type="date" id="validade" required>
+
+        <label>Foto do Produto</label>
+        <div class="foto-area">
+          <video id="cameraPreview" autoplay playsinline style="display:none;width:260px;border-radius:8px;border:1px solid rgba(255,255,255,0.3);"></video>
+          <img id="previewFoto" style="display:none;width:140px;border-radius:6px;border:1px solid rgba(255,255,255,0.3);" />
+          <input type="file" id="foto" accept="image/*" capture="environment" style="display:none;" />
+          <button type="button" id="btnOpenCamera">📷 Abrir Câmera</button>
+          <button type="button" id="btnCapturar" style="display:none;">✅ Capturar Foto</button>
+        </div>
+
+        <button type="submit" class="btnSalvar">Salvar Produto</button>
+      </form>
+    </main>
+  </div>
+
+<script>
+// Câmera Corrigida
+let stream;
+const cameraPreview = document.getElementById('cameraPreview');
+const previewFoto = document.getElementById('previewFoto');
+const inputFoto = document.getElementById('foto');
+const btnOpenCamera = document.getElementById('btnOpenCamera');
+const btnCapturar = document.getElementById('btnCapturar');
+
+btnOpenCamera.addEventListener('click', async () => {
+  stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+  cameraPreview.srcObject = stream;
+  cameraPreview.style.display = 'block';
+  btnCapturar.style.display = 'inline-block';
+});
+
+btnCapturar.addEventListener('click', () => {
+  const canvas = document.createElement('canvas');
+  canvas.width = cameraPreview.videoWidth;
+  canvas.height = cameraPreview.videoHeight;
+  canvas.getContext('2d').drawImage(cameraPreview, 0, 0);
+  const dataURL = canvas.toDataURL("image/jpeg");
+  previewFoto.src = dataURL;
+  previewFoto.style.display = 'block';
+  fetch(dataURL).then(r=>r.blob()).then(b=>{
+    const dt = new DataTransfer();
+    dt.items.add(new File([b], "produto.jpg", { type:"image/jpeg" }));
+    inputFoto.files = dt.files;
+  });
+  if(stream) stream.getTracks().forEach(t=>t.stop());
+  cameraPreview.style.display="none";
+  btnCapturar.style.display="none";
+});
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, collection } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+const app = initializeApp(${JSON.stringify(firebaseConfig)});
+const db = getFirestore(app);
+const storage = getStorage(app);
+const auth = getAuth(app);
+
+formProduto.addEventListener('submit', async e => {
+  e.preventDefault();
+
+  const user = auth.currentUser;
+  const snap = await getDoc(doc(db, "usuarios", user.email));
+  const loja = snap.data().loja;
+
+  const nome = nome.value;
+  const codigo = codigo.value;
+  const lote = lote.value;
+  const setor = setor.value;
+  const validade = validade.value;
+  const [yyyy, mm, dd] = validade.split("-");
+  const validadeBR = `${dd}/${mm}/${yyyy}`;
+  const foto = foto.files[0];
+
+  const idProduto = Date.now().toString();
+  const fotoRef = ref(storage, `${loja}/${idProduto}.jpg`);
+  await uploadBytes(fotoRef, foto);
+  const fotoURL = await getDownloadURL(fotoRef);
+
+  await setDoc(doc(db, `lojas/${loja}/produtos/${idProduto}`), {
+    nome, codigo, lote, setor,
+    dataValidadeISO: validade,
+    dataValidadeBR: validadeBR,
+    fotoURL,
+    status: "normal",
+    criadoEm: new Date()
+  });
+
+  location.href = "lista-produtos.html";
+});
+</script>
+
+<script>
+// MENU HAMBÚRGUER
+const sidebar = document.querySelector('.sidebar');
+const hamburger = document.createElement('button');
+hamburger.className = 'hamburger';
+hamburger.textContent = '☰';
+hamburger.onclick = () => sidebar.classList.toggle('open');
+document.body.appendChild(hamburger);
+</script>
+
+</body>
+</html>

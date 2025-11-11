@@ -162,5 +162,14 @@ document.getElementById("nextMes").onclick = () => { dataRef.setMonth(dataRef.ge
 auth.onAuthStateChanged(carregarCalendario);
 </script>
 
+<script>
+// --- Menu Hambúrguer --- //
+const sidebar = document.querySelector('.sidebar');
+const hamburger = document.createElement('button');
+hamburger.className = 'hamburger';
+hamburger.textContent = '☰';
+hamburger.onclick = () => sidebar.classList.toggle('open');
+document.body.appendChild(hamburger);
+</script>
 </body>
 </html>
