@@ -79,7 +79,6 @@
 <script src="https://unpkg.com/@zxing/browser@0.1.1"></script>
 
 <script>
-// === CÂMERA ===
 let stream;
 const cameraPreview = document.getElementById('cameraPreview');
 const previewFoto = document.getElementById('previewFoto');
@@ -89,77 +88,56 @@ const btnCapturar = document.getElementById('btnCapturar');
 
 btnOpenCamera.onclick = async () => {
   try {
-  stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: { ideal: "environment" } },
-    audio: false
-  });
-} catch {
-  // Se não achar câmera traseira, usa qualquer câmera disponível
-  stream = await navigator.mediaDevices.getUserMedia({
-    video: true,
-    audio: false
-  });
-}
-  cameraPreview.srcObject = stream;
-  cameraPreview.style.display = "block";
-  btnCapturar.style.display = "inline-block";
+    // Lista todos os dispositivos de vídeo
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cameras = devices.filter(d => d.kind === "videoinput");
+
+    if (cameras.length === 0) {
+      alert("Nenhuma câmera encontrada no dispositivo.");
+      return;
+    }
+
+    // Tenta identificar câmera traseira
+    let cameraId = cameras.find(c => c.label.toLowerCase().includes("back") || c.label.toLowerCase().includes("traseira"))?.deviceId;
+
+    // Se não achar traseira → pega a última (geralmente é a traseira mesmo)
+    if (!cameraId) cameraId = cameras[cameras.length - 1].deviceId;
+
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: { exact: cameraId } },
+      audio: false
+    });
+
+    cameraPreview.srcObject = stream;
+    cameraPreview.style.display = 'block';
+    previewFoto.style.display = 'none';
+    btnCapturar.style.display = 'inline-block';
+
+  } catch (e) {
+    alert("Não foi possível acessar a câmera. Dê permissão ao aplicativo nas configurações.");
+    console.log(e);
+  }
 };
 
 btnCapturar.onclick = () => {
-  const canvas = document.createElement("canvas");
+  const canvas = document.createElement('canvas');
   canvas.width = cameraPreview.videoWidth;
   canvas.height = cameraPreview.videoHeight;
-  canvas.getContext("2d").drawImage(cameraPreview, 0, 0);
+  canvas.getContext('2d').drawImage(cameraPreview, 0, 0);
 
   const dataURL = canvas.toDataURL("image/jpeg");
   previewFoto.src = dataURL;
-  previewFoto.style.display = "block";
+  previewFoto.style.display = 'block';
 
-  fetch(dataURL).then(r=>r.blob()).then(b=>{
+  fetch(dataURL).then(r => r.blob()).then(b => {
     const dt = new DataTransfer();
-    dt.items.add(new File([b], "produto.jpg", { type:"image/jpeg" }));
+    dt.items.add(new File([b], "produto.jpg", { type: "image/jpeg" }));
     inputFoto.files = dt.files;
   });
 
-  stream.getTracks().forEach(t=>t.stop());
+  if (stream) stream.getTracks().forEach(t => t.stop());
   cameraPreview.style.display = "none";
   btnCapturar.style.display = "none";
-};
-// === LEITOR DE CÓDIGO DE BARRAS ===
-const btnScan = document.getElementById("btnScan");
-const scannerPreview = document.getElementById("scannerPreview");
-
-btnScan.onclick = async () => {
-
-  // Mostra o preview
-  scannerPreview.style.display = "block";
-
-  // Usa o objeto correto do ZXing
-  const codeReader = new ZXingBrowser.BrowserMultiFormatReader();
-
-  // Lista câmeras
-  const devices = await ZXingBrowser.BrowserMultiFormatReader.listVideoInputDevices();
-
-  if (!devices || devices.length === 0) {
-    alert("Nenhuma câmera encontrada! Dê permissão e recarregue a página.");
-    scannerPreview.style.display = "none";
-    return;
-  }
-
-  // pega a câmera traseira (geralmente a última)
-  const backCam = devices[devices.length - 1].deviceId;
-
-  // inicia leitura
-  codeReader.decodeFromVideoDevice(backCam, scannerPreview, (result, err) => {
-    if (result) {
-      document.getElementById("codigo").value = result.getText();
-      document.getElementById("codigo").style.border = "2px solid #00ff9d";
-
-      // parar câmera
-      codeReader.reset();
-      scannerPreview.style.display = "none";
-    }
-  });
 };
 </script>
 
