@@ -3,40 +3,86 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ValiTec MJ — Login do Gerente</title>
+  <title>ValiTec MJ — Login</title>
 
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="dashboard.css">
 
   <style>
+    :root{
+      --accent:#00c8ff;
+      --text:#dff6ff;
+    }
+
     body {
       background: radial-gradient(circle at 20% 20%, #0a0f1f, #050912);
-      color: #e0f7fa;
+      color: var(--text);
       min-height: 100vh;
       font-family: 'Poppins', sans-serif;
+      overflow: hidden;
     }
+
     #particleCanvas { position: fixed; inset: 0; z-index: 0; }
 
     .login-container {
-      position: absolute; top: 50%; left: 50%;
+      position: absolute;
+      top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      width: 320px; padding: 2rem;
-      background: rgba(20,25,40,0.95);
-      border-radius: 16px; box-shadow: 0 6px 30px rgba(0,0,0,0.6);
-      z-index: 2;
+      width: 330px;
+      padding: 2.2rem;
+      background: rgba(12,20,35,0.82);
+      border-radius: 16px;
+      border: 1px solid rgba(0,200,255,0.45);
+      box-shadow: 0 0 25px rgba(0,200,255,0.25);
+      backdrop-filter: blur(10px);
+      animation: fadeIn .35s ease-out;
+      z-index: 5;
     }
-    label { font-size: 12px; margin-top: 8px; display: block; color:#bde5f2; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translate(-50%, -60%); }
+      to   { opacity: 1; transform: translate(-50%, -50%); }
+    }
+
+    .login-container h2 {
+      text-align: center;
+      margin-bottom: 18px;
+      color: var(--accent);
+      text-shadow: 0 0 14px rgba(0,200,255,0.45);
+      font-weight: 600;
+    }
+
+    label { font-size: 13px; margin-top: 8px; display: block; color:#9fdfff; }
+
     input {
-      width: 100%; padding: 10px; border-radius: 10px;
-      background: rgba(255,255,255,0.07); border: none; color:white;
-      margin-top: 4px;
+      width: 100%; padding: 11px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.18);
+      color:white; margin-top: 4px;
+      outline:none; transition:.25s;
     }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 10px rgba(0,200,255,0.45);
+    }
+
     button {
-      margin-top: 14px; width: 100%; padding: 10px; border-radius: 10px;
-      border: none; background: linear-gradient(90deg,#00b4d8,#0077ff);
-      color: white; font-weight: 600; cursor: pointer;
+      margin-top: 16px;
+      width: 100%; padding: 12px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      background: linear-gradient(90deg,#00b4d8,#009bff);
+      color: #00131e;
+      box-shadow: 0 0 14px rgba(0,200,255,0.45);
+      transition:.25s;
     }
-    .error { color:#ff7b7b; margin-top:10px; min-height:18px; }
+
+    button:hover { transform: scale(1.05); filter:brightness(1.15); }
+
+    .error { color:#ff6f6f; margin-top:10px; text-align:center; min-height:18px; }
   </style>
 </head>
 
@@ -45,7 +91,7 @@
 <canvas id="particleCanvas"></canvas>
 
 <div class="login-container">
-  <h2>Login do Gerente</h2>
+  <h2>Entrar no Sistema</h2>
 
   <form id="loginForm">
     <label>E-mail</label>
@@ -62,7 +108,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
@@ -78,30 +124,22 @@
   const db = getFirestore(app);
 
   const lojaPorGerente = {
-    "cd@supernovacidade.com": "loja_cd_cidade",
-    "novacidade@supernovacidade.com": "loja_cidade",
-    "terranova@supernovacidade.com": "loja_terranova",
-    "manoa@supernovacidade.com": "loja_manoa",
-    "zumbi@supernovacidade.com": "loja_zumbi",
-    "oswaldofrota@supernovacidade.com": "loja_oswaldo",
-    "mosaico@supernovacidade.com": "loja_mosaico",
     "master@supernovacidade.com": "master"
   };
 
   document.getElementById("loginForm").addEventListener("submit", async (e)=> {
     e.preventDefault();
-    const email = document.getElementById("email").value.trim();
-    const senha = document.getElementById("password").value.trim();
+    const email = email.value.trim();
+    const senha = password.value.trim();
     const errorEl = document.getElementById("error");
 
     signInWithEmailAndPassword(auth, email, senha)
       .then(async () => {
-        const loja = lojaPorGerente[email];
+        const loja = lojaPorGerente[email] || "loja_cidade";
         const cargo = (email === "master@supernovacidade.com") ? "master" : "gerente";
 
         await setDoc(doc(db, "usuarios", email), { email, loja, cargo }, { merge:true });
 
-        localStorage.setItem("usuarioLogado", email);
         window.location.href = "dashboard.html";
       })
       .catch(() => { errorEl.textContent = "Email ou senha incorretos."; });
@@ -112,13 +150,34 @@
 // Partículas
 const canvas=document.getElementById("particleCanvas"),ctx=canvas.getContext("2d");
 function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}resize();onresize=resize;
-let particles=Array.from({length:60},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*2+1,dx:(Math.random()-.5)*.4,dy:(Math.random()-.5)*.4}));
-function draw(){
-  ctx.clearRect(0,0,innerWidth,innerHeight);ctx.fillStyle="rgba(0,200,255,.35)";
-  particles.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();});
-  requestAnimationFrame(draw);particles.forEach(p=>{p.x+=p.dx;p.y+=p.dy;if(p.x<0||p.x>innerWidth)p.dx*=-1;if(p.y<0||p.y>innerHeight)p.dy*=-1;});
-}draw();
+let particles=[...Array(65)].map(()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*2+1,dx:(Math.random()-.5)*.45,dy:(Math.random()-.5)*.45}));
+function draw(){ctx.clearRect(0,0,innerWidth,innerHeight);ctx.fillStyle="rgba(0,200,255,.35)";
+particles.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();p.x+=p.dx;p.y+=p.dy;if(p.x<0||p.x>innerWidth)p.dx*=-1;if(p.y<0||p.y>innerHeight)p.dy*=-1;});
+requestAnimationFrame(draw);}draw();
 </script>
+<button id="toggleTheme" class="theme-toggle">🌙</button>
+<script>
+const toggle = document.getElementById("toggleTheme");
 
+function aplicarTema() {
+  const tema = localStorage.getItem("temaValitec") || "dark";
+  if (tema === "light") {
+    document.documentElement.classList.add("light-mode");
+    toggle.textContent = "🌙";
+  } else {
+    document.documentElement.classList.remove("light-mode");
+    toggle.textContent = "🔆";
+  }
+}
+
+toggle.onclick = () => {
+  const atual = localStorage.getItem("temaValitec") || "dark";
+  const novo = (atual === "dark") ? "light" : "dark";
+  localStorage.setItem("temaValitec", novo);
+  aplicarTema();
+};
+
+aplicarTema();
+</script>
 </body>
 </html>
