@@ -27,30 +27,26 @@
 </aside>
 
 
-    <main class="main">
- 
-    <h3 style="margin-bottom:12px;text-align:center;">Resumo por Setor</h3>
+   <main class="main">
 
-    <canvas id="graficoSetores" style="max-width:100%; margin:auto;"></canvas>
+  <h2 style="text-align:center; margin-bottom: 15px;">Painel de Indicadores</h2>
 
-    <button id="fecharSetor" style="margin-top:15px;width:100%;padding:8px;border:none;border-radius:8px;background:var(--accent);color:#000;font-weight:bold;">Fechar</button>
+  <!-- Seleção de Loja (apenas master) -->
+  <div id="seletorLoja" style="display:none; margin:10px 0;">
+    <label style="color:#7deaff;">Selecionar Loja:</label>
+    <select id="selectLoja"></select>
   </div>
-</div>
-      <h2>Painel de Indicadores</h2>
 
-    <div id="seletorLoja" style="display:none; margin:10px 0;">
-      <label style="color:#7deaff;">Selecionar Loja:</label>
-      <select id="selectLoja"></select>
-    </div>
+  <!-- Cards -->
+  <div class="cards">
+    <div class="card"><span class="icon">⏳</span><span class="number">0</span><span class="label">Perto de Vencer</span></div>
+    <div class="card"><span class="icon">📅</span><span class="number">0</span><span class="label">Vencendo Hoje</span></div>
+    <div class="card"><span class="icon">⚠️</span><span class="number">0</span><span class="label">Vencidos</span></div>
+    <div class="card"><span class="icon">📦</span><span class="number">0</span><span class="label">Total de Produtos</span></div>
+    <div class="card resumo-card"><span class="icon">🏷️</span><span class="number">0</span><span class="label">Resumo por Setor</span></div>
+  </div>
 
-      <div class="cards">
-        <div class="card"><span class="icon">⏳</span><span class="number">0</span><span class="label">Perto de Vencer</span></div>
-        <div class="card"><span class="icon">📅</span><span class="number">0</span><span class="label">Vencendo Hoje</span></div>
-        <div class="card"><span class="icon">⚠️</span><span class="number">0</span><span class="label">Vencidos</span></div>
-        <div class="card"><span class="icon">📦</span><span class="number">0</span><span class="label">Total de Produtos</span></div>
-        <div class="card"><span class="icon">🏷️</span><span class="number">0</span><span class="label">Resumo por Setor</span></div>
-      </div>
-    </main>
+</main>
   </div>
 
  <!-- Modal do Resumo por Setor (fora do app-container para não bloquear layout) -->
@@ -225,7 +221,7 @@ async function abrirResumoSetor() {
     if (contagem[p.setor] !== undefined) contagem[p.setor]++;
   });
 
-  const ctx = document.getElementById("graficoSetores");
+  const ctx = document.getElementById("graficoSetoresModal");
 
   if (graficoSetores) graficoSetores.destroy();
 
