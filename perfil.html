@@ -61,40 +61,46 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 
 let lojaAtual = null;
+let usuarioAtual = null;
 
-// ✅ BUSCA AUTOMÁTICA DA LOJA COM BASE NO USUÁRIO LOGADO
+// ✅ Identifica usuário e carrega loja
 onAuthStateChanged(auth, async (user) => {
   if (!user) return;
+  usuarioAtual = user.email;
 
-  const snap = await getDoc(doc(db, "usuarios", user.email));
-  lojaAtual = snap.data().loja;
+  const userSnap = await getDoc(doc(db, "usuarios", user.email));
+  lojaAtual = userSnap.data().loja;
 
-  // ✅ Carrega valores salvos, se existir
-  const confSnap = await getDoc(doc(db, `lojas/${lojaAtual}/config`));
+  const confSnap = await getDoc(doc(db, `lojas/${lojaAtual}/config/geral`));
   if (confSnap.exists()) {
-    document.getElementById("whatsGerente").value = confSnap.data().gerenteWhats || "";
-    document.getElementById("whatsResponsavel").value = confSnap.data().responsavelWhats || "";
+    document.getElementById("whatsGerente").value = confSnap.data().whatsGerente || "";
+    document.getElementById("whatsResponsavel").value = confSnap.data().whatsResponsavel || "";
   }
 });
 
-// ✅ SALVAR CONFIGURAÇÕES
+// ✅ Salvar alterações
 document.getElementById("salvarPerfil").onclick = async (e) => {
   e.preventDefault();
 
-  const gerente = document.getElementById("whatsGerente").value.replace(/\D/g, "");
-  const responsavel = document.getElementById("whatsResponsavel").value.replace(/\D/g, "");
+  const whatsGerente = document.getElementById("whatsGerente").value.replace(/\D/g, "");
+  const whatsResponsavel = document.getElementById("whatsResponsavel").value.replace(/\D/g, "");
 
   if (!lojaAtual) return alert("⚠️ Não foi possível identificar sua loja.");
 
-  await setDoc(doc(db, `lojas/${lojaAtual}/config`), {
-    gerenteWhats: gerente,
-    responsavelWhats: responsavel
+  await setDoc(doc(db, `lojas/${lojaAtual}/config/geral`), {
+    whatsGerente,
+    whatsResponsavel
+  }, { merge: true });
+
+  // ✅ Também salva para facilitar leitura em outras telas
+  await setDoc(doc(db, "gerentes", usuarioAtual), {
+    whatsGerente,
+    whatsResponsavel
   }, { merge: true });
 
   alert("✅ Configurações salvas com sucesso!");
 };
 </script>
-
 
 <script>
 const canvas = document.getElementById("particleCanvas");

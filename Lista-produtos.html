@@ -6,7 +6,6 @@
   <title>ValiTec MJ — Lista de Produtos</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="dashboard.css">
-
 </head>
 <body>
   <canvas id="particleCanvas"></canvas>
@@ -14,11 +13,9 @@
   <div class="app-container">
     <aside class="sidebar">
       <h1>ValiTec MJ</h1>
-    <nav>
+      <nav>
         <a href="dashboard.html">Painel</a>
-        <a href="produto.html">
-            cadastrar produtos
-        </a>
+        <a href="produto.html">cadastrar produtos</a>
         <a href="#" class="active">Lista de produtos</a>
         <a href="Lista-rebaixados.html">Produtos Rebaixados</a>
         <a href="calendario.html">Calendario</a>
@@ -28,97 +25,118 @@
       </nav>
     </aside>
 
-   <main class="main fade-in">
-  <h2 class="page-title">Lista de Produtos</h2>
+    <main class="main fade-in">
+      <h2 class="page-title">Lista de Produtos</h2>
 
-  <!-- Campo de busca -->
-  <input type="text" id="busca" class="input-busca" placeholder="🔍 Buscar por nome, setor ou código...">
+      <!-- Campo de busca -->
+      <input type="text" id="busca" class="input-busca" placeholder="🔍 Buscar por nome, setor ou código...">
 
-  <!-- Lista -->
-  <div id="listaProdutos" class="lista-produtos"></div>
-</main>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, getDocs, getDoc, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+      <!-- Lista -->
+      <div id="listaProdutos" class="lista-produtos"></div>
+    </main>
+  </div>
 
-let loja = null;
-let cargo = null; // ✅ agora cargo é global
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, getDoc, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
-  authDomain: "valitec-mj.firebaseapp.com",
-  projectId: "valitec-mj",
-  storageBucket: "valitec-mj.firebasestorage.app",
-  messagingSenderId: "616592039657",
-  appId: "1:616592039657:web:3827a890474111be85da78"
-};
+  let loja = null;
+  let cargo = null;
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+  const firebaseConfig = {
+    apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
+    authDomain: "valitec-mj.firebaseapp.com",
+    projectId: "valitec-mj",
+    storageBucket: "valitec-mj.firebasestorage.app",
+    messagingSenderId: "616592039657",
+    appId: "1:616592039657:web:3827a890474111be85da78"
+  };
 
-let produtosCarregados = [];
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
 
-async function carregarProdutos() {
-  const user = auth.currentUser;
-  if (!user) return;
+  let produtosCarregados = [];
 
-  const userRef = doc(db, "usuarios", user.email);
-  const userSnap = await getDoc(userRef);
+  async function carregarProdutos() {
+    const user = auth.currentUser;
+    if (!user) return;
 
-  loja = userSnap.data().loja;
-  cargo = userSnap.data().cargo; // ✅ agora cargo é reconhecido corretamente
+    const userRef = doc(db, "usuarios", user.email);
+    const userSnap = await getDoc(userRef);
 
-  const ref = collection(db, `lojas/${loja}/produtos`);
-  const snap = await getDocs(ref);
+    if (!userSnap.exists()) {
+      document.getElementById('listaProdutos').innerHTML = "<div class='produto-card'>Usuário sem perfil configurado.</div>";
+      return;
+    }
 
-  produtosCarregados = [];
-  snap.forEach(docItem => {
-    const p = docItem.data();
-    if (p.status === "rebaixado") return;
-    produtosCarregados.push({ id: docItem.id, ...p });
-  });
+    loja  = userSnap.data().loja;
+    cargo = userSnap.data().cargo;
 
-  exibirLista(produtosCarregados);
-}
+    const ref = collection(db, `lojas/${loja}/produtos`);
+    const snap = await getDocs(ref);
 
-function exibirLista(listaProdutos) {
-  const lista = document.getElementById('listaProdutos');
-  lista.innerHTML = '';
+    produtosCarregados = [];
+    snap.forEach(docItem => {
+      const p = docItem.data();
+      if (p.status === "rebaixado") return;
+      produtosCarregados.push({ id: docItem.id, ...p });
+    });
 
-  listaProdutos.forEach(p => {
-    const item = document.createElement('div');
-    item.className = 'produto-card';
+    exibirLista(produtosCarregados);
+  }
 
-    item.innerHTML = `
-      <img src="${p.fotoURL}" style="width:70px;border-radius:6px;">
-      <div style="flex:1;">
-        <strong>${p.nome}</strong><br>
-        ${p.setor}<br>
-        Validade: ${p.dataValidadeBR}
-      </div>
-    `;
+  function exibirLista(listaProdutos) {
+    const lista = document.getElementById('listaProdutos');
+    lista.innerHTML = '';
 
-    // === Botão WhatsApp ===
-    const btnWhats = document.createElement("button");
-    btnWhats.textContent = "🟢 WhatsApp";
-    btnWhats.className = "btnWhats";
-    btnWhats.onclick = async () => {
-      const perfil = await getDoc(doc(db, "gerentes", auth.currentUser.email));
-      const numero = perfil.data()?.whatsResponsavel || "";
-      window.open(`https://wa.me/55${numero}?text=⚠️ *Rebaixa Solicitada*\n\nProduto: ${p.nome}\nValidade: ${p.dataValidadeBR}`);
-    };
-    item.appendChild(btnWhats);
+    if (!listaProdutos.length) {
+      lista.innerHTML = "<div class='produto-card'>Nenhum produto encontrado.</div>";
+      return;
+    }
 
-    // === Diferença de dias para cor ===
-    const diff = Math.ceil((new Date(p.dataValidadeISO) - new Date()) / (86400000));
-    let cor = diff <= 5 ? "#ff4d4d" : diff <= 10 ? "#ff9f43" : diff <= 15 ? "#ffe66d" : "#4eff9a";
+    listaProdutos.forEach(p => {
+      const item = document.createElement('div');
+      item.className = 'produto-card';
 
-   // === Botão Rebaixar (Agora envia WhatsApp ao gerente) ===
+      const fotoSrc = p.fotoURL || "";
+      item.innerHTML = `
+        <img src="${fotoSrc}" style="width:70px;height:70px;object-fit:cover;border-radius:6px;" onerror="this.style.display='none'">
+        <div style="flex:1;">
+          <strong>${p.nome || "-"}</strong><br>
+          ${p.setor || "-"}<br>
+          Validade: ${p.dataValidadeBR || "-"}
+        </div>
+      `;
+
+      // === Botão WhatsApp ===
+      const btnWhats = document.createElement("button");
+      btnWhats.textContent = "🟢 WhatsApp";
+      btnWhats.className = "btnWhats";
+      btnWhats.onclick = async () => {
+        try {
+          const perfil = await getDoc(doc(db, "gerentes", auth.currentUser.email));
+          const numero = perfil.data()?.whatsResponsavel || "";
+          const msg = `⚠️ *Rebaixa Solicitada*\n\nProduto: ${p.nome}\nValidade: ${p.dataValidadeBR}`;
+          window.open(`https://wa.me/55${numero}?text=${encodeURIComponent(msg)}`);
+        } catch (e) {
+          alert("Não foi possível abrir o WhatsApp.");
+          console.error(e);
+        }
+      };
+      item.appendChild(btnWhats);
+
+      // === Diferença de dias para cor ===
+      const diff = Math.ceil((new Date(p.dataValidadeISO) - new Date()) / 86400000);
+      const cor = (diff <= 5) ? "#ff4d4d" :
+                  (diff <= 10) ? "#ff9f43" :
+                  (diff <= 15) ? "#ffe66d" : "#4eff9a";
+
+// === Botão Rebaixar (avisa o gerente) ===
 const btnConfirm = document.createElement("button");
-btnConfirm.textContent = `✅ Rebaixar (${diff}d)`;
-btnConfirm.style.background = corBtn;
+btnConfirm.textContent = `✅ Rebaixar (${isNaN(diff) ? "-" : diff}d)`;
+btnConfirm.style.background = cor;
 btnConfirm.style.color = "#000";
 btnConfirm.style.padding = "8px 10px";
 btnConfirm.style.borderRadius = "6px";
@@ -126,180 +144,186 @@ btnConfirm.style.fontWeight = "600";
 btnConfirm.style.cursor = "pointer";
 
 btnConfirm.onclick = async () => {
+  try {
+    // Atualiza status do produto
+    await updateDoc(doc(db, `lojas/${loja}/produtos/${p.id}`), {
+      status: "rebaixado"
+    });
 
-  // Atualiza produto como rebaixado
-  await updateDoc(doc(db, `lojas/${loja}/produtos/${p.id}`), { status: "rebaixado" });
+    // ✅ Busca WhatsApp salvo corretamente
+    const confSnap = await getDoc(doc(db, `lojas/${loja}/config/geral`));
+    const gerenteWhats = confSnap.exists() ? confSnap.data().whatsGerente : null;
 
-  // Busca o número do gerente salvo na loja
-  const confSnap = await getDoc(doc(db, `lojas/${loja}/config`));
-  const gerenteWhats = confSnap.exists() ? confSnap.data().gerenteWhats : null;
-
-  if (gerenteWhats) {
-    const msg = `
+    if (gerenteWhats) {
+      const msg = `
 📉 *PRODUTO REBAIXADO*
-    
+
 📦 *${p.nome}*
 🏷️ Setor: ${p.setor}
 🔖 Lote: ${p.lote}
 📅 Validade: ${p.dataValidadeBR}
-`;
+      `;
+      window.open(`https://wa.me/55${gerenteWhats}?text=${encodeURIComponent(msg)}`);
+    }
 
-    // Abre WhatsApp para avisar o gerente
-    window.open(`https://wa.me/55${gerenteWhats}?text=${encodeURIComponent(msg)}`);
+    carregarProdutos();
+  } catch (e) {
+    alert("❌ Erro ao rebaixar o produto.");
+    console.error(e);
   }
-
-  carregarProdutos();
 };
 
 item.appendChild(btnConfirm);
 
-    // ✅ Se NÃO for responsável → pode EDITAR e EXCLUIR
-    if (cargo !== "responsavel") {
 
-      const btnEditar = document.createElement("button");
-      btnEditar.textContent = "✏️ Editar";
-      btnEditar.className = "btnEdit";
-      btnEditar.onclick = () => location.href = `produto.html?id=${p.id}`;
-      item.appendChild(btnEditar);
+      // ✅ Se NÃO for responsável → pode EDITAR e EXCLUIR
+      if (cargo !== "responsavel") {
+        const btnEditar = document.createElement("button");
+        btnEditar.textContent = "✏️ Editar";
+        btnEditar.className = "btnEdit";
+        btnEditar.onclick = () => location.href = `produto.html?id=${p.id}`;
+        item.appendChild(btnEditar);
 
-      const btnExcluir = document.createElement("button");
-      btnExcluir.textContent = "🗑️ Excluir";
-      btnExcluir.className = "btnDelete";
-      btnExcluir.style.background = "#ff6b6b";
-      btnExcluir.style.color = "#000";
-      btnExcluir.onclick = async () => {
-        if (confirm(`Excluir ${p.nome}?`)) {
-          await deleteDoc(doc(db, `lojas/${loja}/produtos/${p.id}`));
-          carregarProdutos();
+        const btnExcluir = document.createElement("button");
+        btnExcluir.textContent = "🗑️ Excluir";
+        btnExcluir.className = "btnDelete";
+        btnExcluir.style.background = "#ff6b6b";
+        btnExcluir.style.color = "#000";
+        btnExcluir.onclick = async () => {
+          if (!confirm(`Excluir ${p.nome}?`)) return;
+          try {
+            await deleteDoc(doc(db, `lojas/${loja}/produtos/${p.id}`));
+            carregarProdutos();
+          } catch (e) {
+            alert("Falha ao excluir.");
+            console.error(e);
+          }
+        };
+        item.appendChild(btnExcluir);
+      }
+
+      lista.appendChild(item);
+    });
+  }
+
+  // 🔍 Busca Instantânea
+  document.getElementById("busca").addEventListener("input", e => {
+    const termo = e.target.value.toLowerCase();
+    exibirLista(produtosCarregados.filter(p =>
+      (p.nome || "").toLowerCase().includes(termo) ||
+      (p.setor || "").toLowerCase().includes(termo) ||
+      (p.codigo || "").toLowerCase().includes(termo)
+    ));
+  });
+
+  onAuthStateChanged(auth, carregarProdutos);
+  </script>
+
+  <script>
+  // Partículas
+  const canvas = document.getElementById("particleCanvas");
+  const ctx = canvas.getContext("2d");
+
+  let particles = [];
+  let w, h;
+
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  for (let i = 0; i < 60; i++) {
+    particles.push({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      r: Math.random() * 2 + 1,
+      dx: (Math.random() - 0.5) * 0.4,
+      dy: (Math.random() - 0.5) * 0.4
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(0, 200, 255, 0.35)";
+
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    connectParticles();
+    updateParticles();
+    requestAnimationFrame(draw);
+  }
+
+  function updateParticles() {
+    particles.forEach(p => {
+      p.x += p.dx;
+      p.y += p.dy;
+
+      if (p.x < 0 || p.x > w) p.dx *= -1;
+      if (p.y < 0 || p.y > h) p.dy *= -1;
+    });
+  }
+
+  function connectParticles() {
+    ctx.strokeStyle = "rgba(0, 200, 255, 0.10)";
+    ctx.lineWidth = 1;
+
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        let dist = Math.hypot(particles[i].x - particles[j].x, particles[i].y - particles[j].y);
+        if (dist < 130) {
+          ctx.globalAlpha = 1 - dist / 130;
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.stroke();
         }
-      };
-      item.appendChild(btnExcluir);
-    }
-
-    lista.appendChild(item);
-  });
-}
-
-// 🔍 Busca Instantânea
-document.getElementById("busca").addEventListener("input", e => {
-  const termo = e.target.value.toLowerCase();
-  exibirLista(produtosCarregados.filter(p =>
-    p.nome.toLowerCase().includes(termo) ||
-    p.setor.toLowerCase().includes(termo) ||
-    p.codigo.toLowerCase().includes(termo)
-  ));
-});
-
-auth.onAuthStateChanged(carregarProdutos);
-</script>
-
-
-
-<script>
-const canvas = document.getElementById("particleCanvas");
-const ctx = canvas.getContext("2d");
-
-let particles = [];
-let w, h;
-
-function resize() {
-  w = canvas.width = window.innerWidth;
-  h = canvas.height = window.innerHeight;
-}
-window.addEventListener("resize", resize);
-resize();
-
-// Criar partículas
-for (let i = 0; i < 60; i++) {
-  particles.push({
-    x: Math.random() * w,
-    y: Math.random() * h,
-    r: Math.random() * 2 + 1,
-    dx: (Math.random() - 0.5) * 0.4,
-    dy: (Math.random() - 0.5) * 0.4
-  });
-}
-
-function draw() {
-  ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = "rgba(0, 200, 255, 0.35)";
-
-  particles.forEach(p => {
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  connectParticles();
-  updateParticles();
-  requestAnimationFrame(draw);
-}
-
-function updateParticles() {
-  particles.forEach(p => {
-    p.x += p.dx;
-    p.y += p.dy;
-
-    if (p.x < 0 || p.x > w) p.dx *= -1;
-    if (p.y < 0 || p.y > h) p.dy *= -1;
-  });
-}
-
-function connectParticles() {
-  ctx.strokeStyle = "rgba(0, 200, 255, 0.10)";
-  ctx.lineWidth = 1;
-
-  for (let i = 0; i < particles.length; i++) {
-    for (let j = i + 1; j < particles.length; j++) {
-      let dist = Math.hypot(particles[i].x - particles[j].x, particles[i].y - particles[j].y);
-      if (dist < 130) {
-        ctx.globalAlpha = 1 - dist / 130;
-        ctx.beginPath();
-        ctx.moveTo(particles[i].x, particles[i].y);
-        ctx.lineTo(particles[j].x, particles[j].y);
-        ctx.stroke();
       }
     }
+    ctx.globalAlpha = 1;
   }
-  ctx.globalAlpha = 1;
-}
 
-draw();
+  draw();
+  </script>
 
+  <script>
+  // Menu hambúrguer
+  const sidebar = document.querySelector('.sidebar');
+  const hamburger = document.createElement('button');
+  hamburger.className = 'hamburger';
+  hamburger.textContent = '☰';
+  hamburger.onclick = () => sidebar.classList.toggle('open');
+  document.body.appendChild(hamburger);
+  </script>
 
-</script>
+  <button id="toggleTheme" class="theme-toggle">🌙</button>
+  <script>
+  const toggle = document.getElementById("toggleTheme");
 
-<script>
-const sidebar = document.querySelector('.sidebar');
-const hamburger = document.createElement('button');
-hamburger.className = 'hamburger';
-hamburger.textContent = '☰';
-hamburger.onclick = () => sidebar.classList.toggle('open');
-document.body.appendChild(hamburger);
-</script>
-<button id="toggleTheme" class="theme-toggle">🌙</button>
-<script>
-const toggle = document.getElementById("toggleTheme");
-
-function aplicarTema() {
-  const tema = localStorage.getItem("temaValitec") || "dark";
-  if (tema === "light") {
-    document.documentElement.classList.add("light-mode");
-    toggle.textContent = "🌙";
-  } else {
-    document.documentElement.classList.remove("light-mode");
-    toggle.textContent = "🔆";
+  function aplicarTema() {
+    const tema = localStorage.getItem("temaValitec") || "dark";
+    if (tema === "light") {
+      document.documentElement.classList.add("light-mode");
+      toggle.textContent = "🌙";
+    } else {
+      document.documentElement.classList.remove("light-mode");
+      toggle.textContent = "🔆";
+    }
   }
-}
 
-toggle.onclick = () => {
-  const atual = localStorage.getItem("temaValitec") || "dark";
-  const novo = (atual === "dark") ? "light" : "dark";
-  localStorage.setItem("temaValitec", novo);
+  toggle.onclick = () => {
+    const atual = localStorage.getItem("temaValitec") || "dark";
+    const novo = (atual === "dark") ? "light" : "dark";
+    localStorage.setItem("temaValitec", novo);
+    aplicarTema();
+  };
+
   aplicarTema();
-};
-
-aplicarTema();
-</script>
+  </script>
 </body>
 </html>

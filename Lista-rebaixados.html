@@ -52,7 +52,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-let itens = []; // lista para filtro
+let itens = [];
 
 async function carregarRebaixados() {
   const user = auth.currentUser;
@@ -89,37 +89,42 @@ function exibirLista(lista) {
       </div>
     `;
 
-    btnReverter.onclick = async () => {
+    // ✅ CRIANDO O BOTÃO REVERTER (correção do erro)
+    const btnReverter = document.createElement("button");
+    btnReverter.textContent = "↩️ Reverter";
+    btnReverter.className = "btnEdit";
+    btnReverter.style.background = "#4eff9a";
+    btnReverter.style.color = "#fff";
+    btnReverter.style.fontWeight = "600";
+    btnReverter.style.borderRadius = "6px";
+    btnReverter.style.cursor = "pointer";
+
+ btnReverter.onclick = async () => {
   await updateDoc(doc(db, `lojas/${p.loja}/produtos/${p.id}`), { status: "normal" });
 
-  // Buscar número salvo no perfil
-  const perfilRef = doc(db, "gerentes", auth.currentUser.email);
-  const perfilSnap = await getDoc(perfilRef);
-  const dados = perfilSnap.data();
+  // Buscar número salvo corretamente
+  const confSnap = await getDoc(doc(db, `lojas/${p.loja}/config/geral`));
+  const whatsGerente = confSnap.exists() ? confSnap.data().whatsGerente : null;
 
-  const numeroResponsavel = dados?.whatsResponsavel;
-
-  if (numeroResponsavel) {
+  if (whatsGerente) {
     const msg = `
-↩️ *PRODUTO REVERTIDO AO PREÇO NORMAL*
+↩️ *REVERÇÃO DE REBAIXA*
 
 📦 *${p.nome}*
 🏷️ Setor: ${p.setor}
 🔖 Lote: ${p.lote}
 📅 Validade: ${p.dataValidadeBR}
     `;
-
-    window.open(`https://wa.me/55${numeroResponsavel}?text=${encodeURIComponent(msg)}`);
-  } else {
-    alert("⚠️ WhatsApp do responsável não está configurado no Perfil.");
+    window.open(`https://wa.me/55${whatsGerente}?text=${encodeURIComponent(msg)}`);
   }
 
   carregarRebaixados();
 };
+
     // 🗑️ Excluir
     const btnExcluir = document.createElement("button");
     btnExcluir.textContent = "🗑️ Excluir";
-    btnExcluir.className = "btnConfirm";
+    btnExcluir.className = "btnDelete";
     btnExcluir.style.background = "#ff5c5c";
     btnExcluir.style.color = "#000";
     btnExcluir.onclick = async () => {
@@ -135,14 +140,18 @@ function exibirLista(lista) {
   });
 }
 
-// 🔍 FILTRO EM TEMPO REAL
+// 🔍 FILTRO
 document.getElementById("buscaRebaixado").addEventListener("input", e => {
   const termo = e.target.value.toLowerCase();
-  exibirLista(itens.filter(p => p.nome.toLowerCase().includes(termo)));
+  exibirLista(itens.filter(p =>
+    p.nome.toLowerCase().includes(termo) ||
+    p.setor.toLowerCase().includes(termo)
+  ));
 });
 
 auth.onAuthStateChanged(carregarRebaixados);
 </script>
+
 
 <script>
 const sidebar = document.querySelector('.sidebar');

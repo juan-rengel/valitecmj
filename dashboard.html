@@ -18,7 +18,7 @@
         <a href="produto.html">
             cadastrar produtos
         </a>
-        <a href="lista-produto.html">Lista de produtos</a>
+        <a href="lista-produtos.html">Lista de produtos</a>
         <a href="Lista-rebaixados.html">Produtos Rebaixados</a>
         <a href="calendario.html">Calendario</a>
         <a href="perfil.html">Perfil</a>
@@ -30,7 +30,7 @@
 
    <main class="main">
 
-  <h2 style="text-align:center; margin-bottom: 15px;">Painel de Indicadores</h2>
+  <h2 style="text-align:center; margin-bottom: 15px;">Panel de Indicadores</h2>
 
   <!-- Seleção de Loja (apenas master) -->
   <div id="seletorLoja" style="display:none; margin:10px 0;">
@@ -222,7 +222,7 @@ async function abrirResumoSetor() {
     if (contagem[p.setor] !== undefined) contagem[p.setor]++;
   });
 
-  const ctx = document.getElementById("graficoSetoresModal");
+  const ctx = document.getElementById("graficoSetores");
 
   if (graficoSetores) graficoSetores.destroy();
 
