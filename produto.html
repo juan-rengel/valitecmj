@@ -78,7 +78,6 @@
   <!-- Biblioteca do leitor de código de barras -->
 <script src="https://unpkg.com/@zxing/browser@latest"></script>
 
-
 <script>
 
  
@@ -118,23 +117,42 @@ btnCapturar.onclick = () => {
   cameraPreview.style.display = "none";
   btnCapturar.style.display = "none";
 };
-// === LEITOR DE CÓDIGO DE BARRAS (ZXing) ===
-const scannerPreview = document.getElementById("scannerPreview");
+// === LEITOR DE CÓDIGO DE BARRAS ===
 const btnScan = document.getElementById("btnScan");
+const scannerPreview = document.getElementById("scannerPreview");
 
 btnScan.onclick = async () => {
+
   scannerPreview.style.display = "block";
 
-  const codeReader = new ZXingBrowser.BrowserMultiFormatReader();
+  // Criador do leitor
+  const codeReader = new ZXing.BrowserMultiFormatReader();
 
-  const devices = await ZXingBrowser.BrowserMultiFormatReader.listVideoInputDevices();
+  // Lista câmeras disponíveis
+  const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
+
+  if (!devices || devices.length === 0) {
+    alert("Nenhuma câmera encontrada. Dê permissão para a câmera e tente novamente.");
+    scannerPreview.style.display = "none";
+    return;
+  }
+
+  // Pega a câmera traseira (normalmente a última)
   const backCamera = devices[devices.length - 1].deviceId;
 
-  codeReader.decodeFromVideoDevice(backCamera, "scannerPreview", (result, err) => {
+  // Inicia leitura
+  codeReader.decodeFromVideoDevice(backCamera, scannerPreview, (result, err) => {
     if (result) {
       document.getElementById("codigo").value = result.getText();
-      scannerPreview.style.display = "none";
-      codeReader.reset();
+
+      // Feedback visual ✅
+      document.getElementById("codigo").style.border = "2px solid #00ff9d";
+
+      // Finaliza
+      setTimeout(() => {
+        scannerPreview.style.display = "none";
+        codeReader.reset();
+      }, 300);
     }
   });
 };
