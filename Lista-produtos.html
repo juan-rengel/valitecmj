@@ -14,12 +14,13 @@
   <div class="app-container">
     <aside class="sidebar">
       <h1>ValiTec MJ</h1>
-     <nav>
+    <nav>
         <a href="dashboard.html">Painel</a>
         <a href="#" class="active">
             cadastrar produtos
         </a>
         <a href="lista-produtos.html">Lista de produtos</a>
+        <a href="Lista-rebaixados.html">Produtos Rebaixados</a>
         <a href="calendario.html">Calendario</a>
         <a href="perfil.html">Perfil</a>
         <a href="#" onclick="localStorage.clear(); location.href='index.html'">Sair</a>
@@ -108,17 +109,22 @@ function exibirLista(listaProdutos) {
     });
     item.appendChild(btnW);
 
-    // Botão Confirmar Rebaixa
-    const btnConfirm = document.createElement("button");
-    btnConfirm.textContent = "✅ Confirmar Rebaixa";
-    btnConfirm.className = "btnConfirm";
-    btnConfirm.addEventListener("click", async () => {
-      await updateDoc(doc(db, `lojas/${auth.currentUser.email.split('@')[0]}/produtos`, p.id), {
-        status: "rebaixado"
-      });
-      carregarProdutos();
-    });
-    item.appendChild(btnConfirm);
+   const btnConfirm = document.createElement("button");
+btnConfirm.textContent = "✅ Confirmar Rebaixa";
+btnConfirm.className = "btnConfirm";
+btnConfirm.addEventListener("click", async () => {
+
+  // Buscar loja correta do usuário
+  const uSnap = await getDoc(doc(db, "usuarios", auth.currentUser.email));
+  const loja = uSnap.data().loja;
+
+  await updateDoc(doc(db, `lojas/${loja}/produtos/${p.id}`), {
+    status: "rebaixado"
+  });
+
+  carregarProdutos();
+});
+item.appendChild(btnConfirm);
 
     // Botão Editar ✏️
 const btnEdit = document.createElement("button");
