@@ -27,11 +27,15 @@
     </aside>
 
     <main class="main">
-      <h2 style="display:flex; justify-content:space-between; align-items:center;">
+      <h2 style="display:flex; justify-content:space-between; align-items:center;   margin-bottom:10px; ">
         <button id="prevMes" class="btn-switch">←</button>
         <span id="mesTitulo">Mês Atual</span>
         <button id="nextMes" class="btn-switch">→</button>
-      </h2>
+        </h2>
+        <div class="calendar-grid" style="opacity:.7; font-weight:bold;">
+          <div>D</div><div>S</div><div>T</div><div>Q</div><div>Q</div><div>S</div><div>S</div>
+        </div>
+
 
       <div id="calendarContainer" class="calendar-grid"></div>
     </main>
@@ -113,21 +117,21 @@ async function carregarCalendario() {
       }
     });
 
-    let cor = "var(--accent)";
+let cor = "rgba(0,200,255,0.6)"; // padrão
+
 produtosDoDia.forEach(p => {
 
-  // ✅ Se for rebaixado → cima de tudo PRIORIDADE VERDE
-  if (p.status === "rebaixado") {
-    cor = "#4eff9a";
-    return;
-  }
+  // ✅ Não mostrar rebaixados
+  if (p.status === "rebaixado") return;
 
   const venc = new Date(p.dataValidadeISO);
   const diff = Math.ceil((venc - hoje) / 86400000);
 
-  if (diff <= 3) cor = "#ff5c5c";
-  else if (diff <= 7) cor = "#ff9f43";
-  else if (diff <= 10) cor = "#ffe66d";
+  if (diff < 0) cor = "#ff4d4d";        // Vencido
+  else if (diff === 5) cor = "#ff4d4d"; // Até 05 dias
+  else if (diff <= 10) cor = "#ff7a29";  // Até 10 dias
+  else if (diff <= 15) cor = "#ffd93d";  // Até 15 dias
+  else cor = "rgba(0,200,255,0.6)";
 });
 
     const cell = document.createElement("div");

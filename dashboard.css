@@ -286,3 +286,59 @@ button:active, .btnSalvar:active{transform:translateY(1px)}
   }
 }
 
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-top: 18px;
+}
+
+.dia-calendario {
+  padding: 10px;
+  background: rgba(255,255,255,0.06);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  text-align: center;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.dia-calendario:hover {
+  transform: scale(1.08);
+  background: rgba(0,200,255,0.25);
+}
+
+#calendarContainer {
+  width: 100%;
+  max-width: 900px;
+  margin: auto;
+}
+
+/* CALENDÁRIO */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-top: 18px;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.dia-calendario {
+  padding: 14px 0;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.15s ease;
+  border: 2px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.06);
+}
+
+.dia-calendario:hover {
+  transform: scale(1.12);
+  filter: brightness(1.3);
+}
