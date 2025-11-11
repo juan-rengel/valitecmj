@@ -35,7 +35,12 @@
         <input type="text" id="nome" required>
 
         <label>Código de Barras</label>
-        <input type="text" id="codigo" placeholder="Escanear ou digitar" required>
+<div style="display:flex; gap:8px;">
+  <input type="text" id="codigo" placeholder="Aguardando leitura..." required style="flex:1;">
+  <button type="button" id="btnScan" style="padding:6px 12px;border-radius:6px;background:var(--accent);border:none;cursor:pointer;">📷 Ler</button>
+</div>
+
+<video id="scannerPreview" style="display:none;width:260px;border-radius:8px;margin-top:8px;border:1px solid rgba(255,255,255,0.4);"></video>
 
         <label>Lote</label>
         <input type="text" id="lote" required>
@@ -64,11 +69,20 @@
         </div>
 
         <button type="submit" class="btnSalvar" id="btnSalvar">Salvar Produto</button>
+        <button type="button" id="btnLimpar" class="btnEdit" style="background:#555;border:none;">Limpar Campos</button>
+
       </form>
     </main>
   </div>
 
+  <!-- Biblioteca do leitor de código de barras -->
+<script src="https://unpkg.com/@zxing/library@latest"></script>
+
+
 <script>
+
+ 
+ 
 // === CÂMERA ===
 let stream;
 const cameraPreview = document.getElementById('cameraPreview');
@@ -103,6 +117,26 @@ btnCapturar.onclick = () => {
   stream.getTracks().forEach(t=>t.stop());
   cameraPreview.style.display = "none";
   btnCapturar.style.display = "none";
+};
+
+// === LEITOR DE CÓDIGO DE BARRAS (ZXing) ===
+const scannerPreview = document.getElementById("scannerPreview");
+const btnScan = document.getElementById("btnScan");
+let codeReader = new ZXing.BrowserMultiFormatReader();
+
+btnScan.onclick = async () => {
+  scannerPreview.style.display = "block";
+
+  const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
+  const backCamera = devices[devices.length - 1].deviceId;
+
+  codeReader.decodeFromVideoDevice(backCamera, "scannerPreview", (result, err) => {
+    if (result) {
+      document.getElementById("codigo").value = result.getText();
+      scannerPreview.style.display = "none";
+      codeReader.reset();
+    }
+  });
 };
 </script>
 
@@ -193,6 +227,12 @@ formProduto.onsubmit = async (e) => {
 
   location.href = "lista-produtos.html";
 };
+// ✅ ESTE AQUI É O BOTÃO LIMPAR
+document.getElementById("btnLimpar").onclick = () => {
+  formProduto.reset();
+  previewFoto.style.display = "none";
+  scannerPreview.style.display = "none";
+};
 </script>
 
 <script>
@@ -204,6 +244,7 @@ hamburger.textContent = '☰';
 hamburger.onclick = () => sidebar.classList.toggle('open');
 document.body.appendChild(hamburger);
 </script>
+<script src="https://unpkg.com/@zxing/library@latest"></script>
 
 </body>
 </html>

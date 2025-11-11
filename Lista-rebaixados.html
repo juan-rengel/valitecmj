@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ValiTec MJ — Rebaixados</title>
+  <title>ValiTec MJ — Produtos Rebaixados</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="dashboard.css">
 </head>
@@ -12,29 +12,32 @@
 
   <div class="app-container">
     <aside class="sidebar">
-   <h1> <br></h1>
+      <h1>ValiTec MJ</h1>
       <nav>
         <a href="dashboard.html">Painel</a>
-        <a href="produto.html" class="active">
-            cadastrar produtos
-        </a>
-        <a href="Lista-produtos.html">Lista de produtos</a>
-        <a href="#" class="active">Produtos Rebaixados</a>
-        <a href="calendario.html">Calendario</a>
+        <a href="produtos.html">Cadastrar Produto</a>
+        <a href="lista-produtos.html">Lista de Produtos</a>
+        <a href="Lista-rebaixados.html" class="active">Produtos Rebaixados</a>
+        <a href="calendario.html">Calendário</a>
         <a href="perfil.html">Perfil</a>
         <a href="#" onclick="localStorage.clear(); location.href='index.html'">Sair</a>
       </nav>
     </aside>
 
     <main class="main">
-      <h2 style="text-align: center;">Produtos Rebaixados</h2>
+      <h2 style="text-align:center;">Produtos Rebaixados</h2>
+
+      <!-- 🔍 CAMPO DE BUSCA -->
+      <input type="text" id="buscaRebaixado" placeholder="🔍 Buscar por nome..." 
+      style="margin-bottom: 16px; padding: 10px; width:100%; border-radius:12px; border:1px solid rgba(255,255,255,0.25); background:rgba(20,28,47,0.45); color:white; outline:none;">
+
       <div id="listaRebaixados" class="lista-produtos"></div>
     </main>
   </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, query, where, getDocs, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, query, where, getDocs, doc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -50,135 +53,84 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
+let itens = []; // lista para filtro
+
 async function carregarRebaixados() {
   const user = auth.currentUser;
   if (!user) return;
 
-  const userRef = doc(db, "usuarios", user.email);
-  const userSnap = await getDoc(userRef);
+  const userSnap = await getDoc(doc(db, "usuarios", user.email));
   const loja = userSnap.data().loja;
 
-  const ref = collection(db, `lojas/${loja}/produtos`);
-  const q = query(ref, where("status", "==", "rebaixado"));
+  const q = query(collection(db, `lojas/${loja}/produtos`), where("status", "==", "rebaixado"));
   const snap = await getDocs(q);
 
-  const lista = document.getElementById('listaRebaixados');
-  lista.innerHTML = '';
+  itens = [];
+  snap.forEach(d => itens.push({ id: d.id, ...d.data(), loja }));
+
+  exibirLista(itens);
 }
-  snap.forEach(doc => {
-  const p = doc.data();
 
-  const item = document.createElement('div');
-  item.className = 'produto-card';
-  item.style.display = 'flex';
-  item.style.alignItems = 'center';
-  item.style.gap = '12px';
-  item.style.padding = '12px';
-  item.style.borderRadius = '8px';
-  item.style.marginBottom = '12px';
-  item.style.background = '#3a3f47';
-  item.style.border = '1px solid #4eff9a';
-  item.style.opacity = '0.85';
+function exibirLista(lista) {
+  const div = document.getElementById("listaRebaixados");
+  div.innerHTML = "";
 
-  // Imagem
-  const img = document.createElement('img');
-  img.src = p.fotoURL || '';
-  img.style.width = '70px';
-  img.style.height = '70px';
-  img.style.objectFit = 'cover';
-  img.style.borderRadius = '6px';
+  lista.forEach(p => {
+    const card = document.createElement("div");
+    card.className = "produto-card";
+    card.style.border = "1px solid #4eff9a";
 
-  // Info
-  const info = document.createElement('div');
-  info.innerHTML = `
-    <strong>${p.nome}</strong><br>
-    ${p.setor}<br>
-    Validade: ${p.dataValidadeBR}<br>
-    <span style="color:#4eff9a;font-weight:bold;">✅ REBAIXADO</span>
-  `;
+    card.innerHTML = `
+      <img src="${p.fotoURL}" style="width:70px;border-radius:6px;">
+      <div style="flex:1;">
+        <strong>${p.nome}</strong><br>
+        ${p.setor}<br>
+        Validade: ${p.dataValidadeBR}<br>
+        <span style="color:#4eff9a;font-weight:bold;">✅ REBAIXADO</span>
+      </div>
+    `;
 
-  item.appendChild(img);
-  item.appendChild(info);
-  lista.appendChild(item);
+    // 🔄 Reverter
+    const btnReverter = document.createElement("button");
+    btnReverter.textContent = "↩️ Reverter";
+    btnReverter.className = "btnConfirm";
+    btnReverter.style.background = "#4eff9a";
+    btnReverter.style.color = "#000";
+    btnReverter.onclick = async () => {
+      await updateDoc(doc(db, `lojas/${p.loja}/produtos/${p.id}`), { status: "normal" });
+      carregarRebaixados();
+    };
+
+    // 🗑️ Excluir
+    const btnExcluir = document.createElement("button");
+    btnExcluir.textContent = "🗑️ Excluir";
+    btnExcluir.className = "btnConfirm";
+    btnExcluir.style.background = "#ff5c5c";
+    btnExcluir.style.color = "#000";
+    btnExcluir.onclick = async () => {
+      if (confirm(`Excluir definitivamente ${p.nome}?`)) {
+        await deleteDoc(doc(db, `lojas/${p.loja}/produtos/${p.id}`));
+        carregarRebaixados();
+      }
+    };
+
+    card.appendChild(btnReverter);
+    card.appendChild(btnExcluir);
+    div.appendChild(card);
+  });
+}
+
+// 🔍 FILTRO EM TEMPO REAL
+document.getElementById("buscaRebaixado").addEventListener("input", e => {
+  const termo = e.target.value.toLowerCase();
+  exibirLista(itens.filter(p => p.nome.toLowerCase().includes(termo)));
 });
 
 auth.onAuthStateChanged(carregarRebaixados);
 </script>
 
 <script>
-const canvas = document.getElementById("particleCanvas");
-const ctx = canvas.getContext("2d");
-
-let particles = [];
-let w, h;
-
-function resize() {
-  w = canvas.width = window.innerWidth;
-  h = canvas.height = window.innerHeight;
-}
-window.addEventListener("resize", resize);
-resize();
-
-// Criar partículas
-for (let i = 0; i < 60; i++) {
-  particles.push({
-    x: Math.random() * w,
-    y: Math.random() * h,
-    r: Math.random() * 2 + 1,
-    dx: (Math.random() - 0.5) * 0.4,
-    dy: (Math.random() - 0.5) * 0.4
-  });
-}
-
-function draw() {
-  ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = "rgba(0, 200, 255, 0.35)";
-
-  particles.forEach(p => {
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  connectParticles();
-  updateParticles();
-  requestAnimationFrame(draw);
-}
-
-function updateParticles() {
-  particles.forEach(p => {
-    p.x += p.dx;
-    p.y += p.dy;
-
-    if (p.x < 0 || p.x > w) p.dx *= -1;
-    if (p.y < 0 || p.y > h) p.dy *= -1;
-  });
-}
-
-function connectParticles() {
-  ctx.strokeStyle = "rgba(0, 200, 255, 0.10)";
-  ctx.lineWidth = 1;
-
-  for (let i = 0; i < particles.length; i++) {
-    for (let j = i + 1; j < particles.length; j++) {
-      let dist = Math.hypot(particles[i].x - particles[j].x, particles[i].y - particles[j].y);
-      if (dist < 130) {
-        ctx.globalAlpha = 1 - dist / 130;
-        ctx.beginPath();
-        ctx.moveTo(particles[i].x, particles[i].y);
-        ctx.lineTo(particles[j].x, particles[j].y);
-        ctx.stroke();
-      }
-    }
-  }
-  ctx.globalAlpha = 1;
-}
-
-draw();
-</script>
-
-<script>
-// --- Menu Hambúrguer --- //
+// MENU HAMBÚRGUER
 const sidebar = document.querySelector('.sidebar');
 const hamburger = document.createElement('button');
 hamburger.className = 'hamburger';

@@ -16,7 +16,7 @@
       <h1>ValiTec MJ</h1>
     <nav>
         <a href="dashboard.html">Painel</a>
-        <a href="produto.html" class="active">
+        <a href="produto.html">
             cadastrar produtos
         </a>
         <a href="#" class="active">Lista de produtos</a>
@@ -131,7 +131,7 @@ const btnEdit = document.createElement("button");
 btnEdit.textContent = "✏️ Editar";
 btnEdit.className = "btnEdit";
 btnEdit.addEventListener("click", () => {
-  window.location.href = `produtos.html?id=${p.id}`;
+  window.location.href = `produto.html?id=${p.id}`;
 });
 item.appendChild(btnEdit);
 
