@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ValiTec MJ — Calendário de Validades</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <canvas id="particleCanvas"></canvas>
+
+  <div class="app-container">
+    <aside class="sidebar">
+      <h1>ValiTec MJ</h1>
+      <nav>
+        <a href="dashboard.html">Painel</a>
+        <a href="produtos.html">Cadastrar Produto</a>
+        <a href="lista-produtos.html">Lista de Produtos</a>
+        <a href="calendario.html" class="active">Calendário</a>
+        <a href="perfil.html">Perfil</a>
+        <a href="#" onclick="localStorage.clear(); location.href='index.html'">Sair</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <h2 style="display:flex; justify-content:space-between; align-items:center;">
+        <button id="prevMes" class="btn-switch">←</button>
+        <span id="mesTitulo">Mês Atual</span>
+        <button id="nextMes" class="btn-switch">→</button>
+      </h2>
+
+      <div id="calendarContainer" class="calendar-grid"></div>
+    </main>
+  </div>
+
+  <!-- MODAL CORRETA -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <span id="fecharModal" class="fechar">✖</span>
+      <h3 id="modalTitulo">Produtos do Dia</h3>
+      <div id="modalLista"></div>
+    </div>
+  </div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, getDocs, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
+  authDomain: "valitec-mj.firebaseapp.com",
+  projectId: "valitec-mj",
+  storageBucket: "valitec-mj.firebasestorage.app",
+  messagingSenderId: "616592039657",
+  appId: "1:616592039657:web:3827a890474111be85da78"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+const calendarContainer = document.getElementById("calendarContainer");
+const modal = document.getElementById("modal");
+const modalLista = document.getElementById("modalLista");
+const modalFechar = document.getElementById("fecharModal");
+
+modalFechar.onclick = () => modal.classList.add("hidden");
+window.onclick = e => { if (e.target === modal) modal.classList.add("hidden"); };
+
+function diasNoMes(ano, mes) {
+  return new Date(ano, mes + 1, 0).getDate();
+}
+
+window.dataRef = new Date();
+
+async function carregarCalendario() {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const userSnap = await getDoc(doc(db, "usuarios", user.email));
+  const loja = userSnap.data().loja;
+
+  const snap = await getDocs(collection(db, `lojas/${loja}/produtos`));
+
+  const hoje = new Date();
+  const ano = dataRef.getFullYear();
+  const mes = dataRef.getMonth();
+  const totalDias = diasNoMes(ano, mes);
+
+  document.getElementById("mesTitulo").textContent =
+    dataRef.toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
+
+  calendarContainer.innerHTML = "";
+
+  for (let dia = 1; dia <= totalDias; dia++) {
+    const dataAtual = new Date(ano, mes, dia);
+    const produtosDoDia = [];
+
+    snap.forEach(docItem => {
+      const p = docItem.data();
+      if (!p.dataValidadeISO) return;
+      const venc = new Date(p.dataValidadeISO);
+
+      if (venc.toDateString() === dataAtual.toDateString()) {
+        produtosDoDia.push(p);
+      }
+    });
+
+    let cor = "var(--accent)";
+produtosDoDia.forEach(p => {
+
+  // ✅ Se for rebaixado → cima de tudo PRIORIDADE VERDE
+  if (p.status === "rebaixado") {
+    cor = "#4eff9a";
+    return;
+  }
+
+  const venc = new Date(p.dataValidadeISO);
+  const diff = Math.ceil((venc - hoje) / 86400000);
+
+  if (diff <= 3) cor = "#ff5c5c";
+  else if (diff <= 7) cor = "#ff9f43";
+  else if (diff <= 10) cor = "#ffe66d";
+});
+
+    const cell = document.createElement("div");
+    cell.className = "dia-calendario";
+    cell.textContent = dia;
+    cell.style.borderColor = cor;
+
+    if (produtosDoDia.length > 0) {
+      cell.style.cursor = "pointer";
+      cell.onclick = () => abrirModal(produtosDoDia);
+    }
+
+    calendarContainer.appendChild(cell);
+  }
+}
+
+function abrirModal(lista) {
+  modalLista.innerHTML = "";
+  lista.forEach(p => {
+    const item = document.createElement("div");
+    item.className = "produto-card";
+    item.innerHTML = `
+  <strong>${p.nome}</strong><br>
+  ${p.setor}<br>
+  Lote: ${p.lote}<br>
+  Validade: ${p.dataValidadeBR}<br>
+  ${p.status === "rebaixado" ? "<span style='color:#4eff9a;font-weight:bold;'>✅ REBAIXADO</span>" : ""}
+`;
+    modalLista.appendChild(item);
+  });
+  modal.classList.remove("hidden");
+}
+
+document.getElementById("prevMes").onclick = () => { dataRef.setMonth(dataRef.getMonth()-1); carregarCalendario(); };
+document.getElementById("nextMes").onclick = () => { dataRef.setMonth(dataRef.getMonth()+1); carregarCalendario(); };
+
+auth.onAuthStateChanged(carregarCalendario);
+</script>
+
+</body>
+</html>

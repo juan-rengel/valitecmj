@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ValiTec MJ — Cadastro de Produto</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <canvas id="particleCanvas"></canvas>
+
+  <div class="app-container">
+    <aside class="sidebar">
+      <h1>ValiTec MJ</h1>
+      <nav>
+        <a href="dashboard.html">Painel</a>
+        <a href="lista-produtos.html">Produtos</a>
+        <a href="produtos.html" class="active">Novo Produto</a>
+        <a href="#">Perfil</a>
+        <a href="index.html">Sair</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <h2>Cadastrar Produto</h2>
+
+      <form id="formProduto" class="form-produto">
+        <label>Nome do Produto</label>
+        <input type="text" id="nome" required>
+
+        <label>Código de Barras</label>
+        <input type="text" id="codigo" placeholder="Escanear ou digitar" required>
+        <button type="button" id="btnScan">📷 Ler Código de Barras</button>
+
+        <label>Lote</label>
+        <input type="text" id="lote" required>
+
+        <label>Setor</label>
+        <select id="setor" required>
+          <option value="Mercearia">Mercearia</option>
+          <option value="Bebidas">Bebidas</option>
+          <option value="Frios">Frios</option>
+          <option value="Higiene">Higiene</option>
+          <option value="Limpeza">Limpeza</option>
+          <option value="Açougue">Açougue</option>
+        </select>
+
+        <label>Data de Validade</label>
+        <input type="date" id="validade" required>
+
+        <label>Foto do Produto</label>
+        <div class="foto-area" style="display:flex;flex-direction:column;gap:10px;align-items:flex-start;">
+  <video id="cameraPreview" autoplay playsinline style="display:none;width:100%;max-width:260px;border-radius:8px;border:1px solid rgba(255,255,255,0.3);"></video>
+
+  <img id="previewFoto" style="display:none;width:120px;border-radius:6px;border:1px solid rgba(255,255,255,0.3);" />
+
+  <input type="file" id="foto" accept="image/*" capture="environment" required style="display:none;" />
+
+  <button type="button" id="btnOpenCamera" style="padding:8px 14px;border-radius:8px;background:var(--accent);border:none;cursor:pointer;">📷 Abrir Câmera</button>
+  <button type="button" id="btnCapturar" style="display:none;padding:8px 14px;border-radius:8px;background:rgba(0,200,255,0.3);border:1px solid var(--accent);cursor:pointer;">✅ Capturar Foto</button>
+</div>
+
+        <button type="submit" class="btnSalvar">Salvar Produto</button>
+      </form>
+    </main>
+  </div>
+
+<script>
+// Câmera traseira
+let stream;
+const btnFoto = document.getElementById('btnFoto');
+const cameraPreview = document.getElementById('cameraPreview');
+const previewFoto = document.getElementById('previewFoto');
+const inputFoto = document.getElementById('foto');
+const btnCapture = document.getElementById('btnCapture');
+
+btnFoto.addEventListener('click', async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } }, audio: false });
+  } catch {
+    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+  }
+  cameraPreview.srcObject = stream;
+  cameraPreview.style.display = 'block';
+  previewFoto.style.display = 'none';
+  document.getElementById('btnCapture').style.display = 'inline-block';
+});
+
+btnCapture.addEventListener('click', () => {
+  const canvas = document.createElement('canvas');
+  canvas.width = cameraPreview.videoWidth;
+  canvas.height = cameraPreview.videoHeight;
+  canvas.getContext('2d').drawImage(cameraPreview, 0, 0);
+  const imageData = canvas.toDataURL('image/jpeg');
+
+  previewFoto.src = imageData;
+  previewFoto.style.display = 'block';
+
+  // Converte preview em arquivo para envio
+  fetch(imageData)
+    .then(res => res.blob())
+    .then(blob => {
+      const file = new File([blob], `foto.jpg`, { type: 'image/jpeg' });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      inputFoto.files = dt.files;
+    });
+
+  // Desliga a câmera
+  cameraPreview.style.display = 'none';
+  document.getElementById('btnCapture').style.display = 'none';
+  if (stream) stream.getTracks().forEach(track => track.stop());
+});
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, collection } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
+  authDomain: "valitec-mj.firebaseapp.com",
+  projectId: "valitec-mj",
+  storageBucket: "valitec-mj.firebasestorage.app",
+  messagingSenderId: "616592039657",
+  appId: "1:616592039657:web:3827a890474111be85da78"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const storage = getStorage(app);
+const auth = getAuth(app);
+
+const form = document.getElementById('formProduto');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const email = localStorage.getItem("usuarioLogado");
+  const userRef = doc(db, "usuarios", email);
+  const userSnap = await getDoc(userRef);
+  const loja = userSnap.data().loja;
+
+  const nome = document.getElementById('nome').value;
+  const codigo = document.getElementById('codigo').value;
+  const lote = document.getElementById('lote').value;
+  const setor = document.getElementById('setor').value;
+  const validadeInput = document.getElementById('validade').value;
+
+  const isoDate = validadeInput;
+  const [yyyy, mm, dd] = validadeInput.split('-');
+  const brDate = `${dd}/${mm}/${yyyy}`;
+
+  const fotoFile = document.getElementById('foto').files[0];
+  const produtoId = Date.now().toString();
+
+  const storageRef = ref(storage, `${loja}/${produtoId}.jpg`);
+  await uploadBytes(storageRef, fotoFile);
+  const fotoURL = await getDownloadURL(storageRef);
+
+  await setDoc(doc(collection(db, "lojas", loja, "produtos"), produtoId), {
+    nome,
+    codigo,
+    lote,
+    setor,
+    dataValidadeISO: isoDate,
+    dataValidadeBR: brDate,
+    fotoURL,
+    criadoEm: new Date()
+  });
+
+  window.location.href = "lista-produtos.html";
+});
+</script>
+</body>
+</html>

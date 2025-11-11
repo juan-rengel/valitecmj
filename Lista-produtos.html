@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ValiTec MJ — Lista de Produtos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dashboard.css">
+
+</head>
+<body>
+  <canvas id="particleCanvas"></canvas>
+
+  <div class="app-container">
+    <aside class="sidebar">
+      <h1>ValiTec MJ</h1>
+      <nav>
+        <a href="dashboard.html">Painel</a>
+        <a href="produtos.html">Cadastrar Produto</a>
+        <a href="lista-produtos.html" class="active">Lista de Produtos</a>
+        <a href="perfil.html">Perfil</a>
+        <a href="#" onclick="localStorage.clear(); location.href='index.html'">Sair</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <h2>Produtos Cadastrados</h2>
+<input type="text" id="busca" placeholder="🔍 Buscar por nome, setor ou código..." 
+style="margin-bottom: 16px; padding: 10px 14px; width:100%; border-radius:12px; border:1px solid rgba(255,255,255,0.25); background:rgba(20,28,47,0.45); color:white; outline:none;">
+
+      <div id="listaProdutos" class="lista-produtos"></div>
+
+    </main>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, getDocs, getDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
+  authDomain: "valitec-mj.firebaseapp.com",
+  projectId: "valitec-mj",
+  storageBucket: "valitec-mj.firebasestorage.app",
+  messagingSenderId: "616592039657",
+  appId: "1:616592039657:web:3827a890474111be85da78"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+let produtosCarregados = []; // lista em memória
+
+async function carregarProdutos() {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const userRef = doc(db, "usuarios", user.email);
+  const userSnap = await getDoc(userRef);
+  const loja = userSnap.data().loja;
+
+  const ref = collection(db, `lojas/${loja}/produtos`);
+  const snap = await getDocs(ref);
+
+  produtosCarregados = [];
+  snap.forEach(docItem => {
+    const p = docItem.data();
+    if (p.status === "rebaixado") return; // Não mostra rebaixados aqui
+    produtosCarregados.push({ id: docItem.id, ...p });
+  });
+
+  exibirLista(produtosCarregados);
+}
+
+function exibirLista(listaProdutos) {
+  const lista = document.getElementById('listaProdutos');
+  lista.innerHTML = '';
+
+  listaProdutos.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'produto-card';
+
+    const img = document.createElement('img');
+    img.src = p.fotoURL || '';
+
+    const info = document.createElement('div');
+    info.innerHTML = `<strong>${p.nome}</strong><br>${p.setor}<br>Validade: ${p.dataValidadeBR}`;
+
+    item.appendChild(img);
+    item.appendChild(info);
+
+    // Botão WhatsApp
+    const btnW = document.createElement('button');
+    btnW.textContent = "🟢 Rebaixa via WhatsApp";
+    btnW.className = "btnWhats";
+    btnW.addEventListener("click", async () => {
+      const perfilRef = doc(db, "gerentes", auth.currentUser.email);
+      const perfilSnap = await getDoc(perfilRef);
+      const dados = perfilSnap.data();
+      const numero = dados.whatsResponsavel;
+
+      const msg = `⚠️ SOLICITAÇÃO DE REBAIXA\n\n📦 *${p.nome}*\n🔖 Lote: ${p.lote}\n🏷️ Setor: ${p.setor}\n🧾 Código: ${p.codigo}\n📅 Validade: ${p.dataValidadeBR}`;
+
+      window.open(`https://wa.me/55${numero}?text=${encodeURIComponent(msg)}`);
+    });
+    item.appendChild(btnW);
+
+    // Botão Confirmar Rebaixa
+    const btnConfirm = document.createElement("button");
+    btnConfirm.textContent = "✅ Confirmar Rebaixa";
+    btnConfirm.className = "btnConfirm";
+    btnConfirm.addEventListener("click", async () => {
+      await updateDoc(doc(db, `lojas/${auth.currentUser.email.split('@')[0]}/produtos`, p.id), {
+        status: "rebaixado"
+      });
+      carregarProdutos();
+    });
+    item.appendChild(btnConfirm);
+
+    // Botão Editar ✏️
+    const btnEdit = document.createElement("button");
+    btnEdit.textContent = "✏️ Editar";
+    btnEdit.className = "btnEdit";
+    btnEdit.addEventListener("click", () => {
+      localStorage.setItem("produtoEdicaoId", p.id);
+      window.location.href = "produtos.html";
+    });
+    item.appendChild(btnEdit);
+
+    lista.appendChild(item);
+  });
+}
+
+// Busca Instantânea
+document.getElementById("busca")?.addEventListener("input", (e) => {
+  const termo = e.target.value.toLowerCase();
+  const filtrados = produtosCarregados.filter(p =>
+    p.nome.toLowerCase().includes(termo) ||
+    p.setor.toLowerCase().includes(termo) ||
+    p.codigo.toLowerCase().includes(termo)
+  );
+  exibirLista(filtrados);
+});
+
+auth.onAuthStateChanged(carregarProdutos);
+</script>
+
+
+<script>
+const canvas = document.getElementById("particleCanvas");
+const ctx = canvas.getContext("2d");
+
+let particles = [];
+let w, h;
+
+function resize() {
+  w = canvas.width = window.innerWidth;
+  h = canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
+
+// Criar partículas
+for (let i = 0; i < 60; i++) {
+  particles.push({
+    x: Math.random() * w,
+    y: Math.random() * h,
+    r: Math.random() * 2 + 1,
+    dx: (Math.random() - 0.5) * 0.4,
+    dy: (Math.random() - 0.5) * 0.4
+  });
+}
+
+function draw() {
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = "rgba(0, 200, 255, 0.35)";
+
+  particles.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  connectParticles();
+  updateParticles();
+  requestAnimationFrame(draw);
+}
+
+function updateParticles() {
+  particles.forEach(p => {
+    p.x += p.dx;
+    p.y += p.dy;
+
+    if (p.x < 0 || p.x > w) p.dx *= -1;
+    if (p.y < 0 || p.y > h) p.dy *= -1;
+  });
+}
+
+function connectParticles() {
+  ctx.strokeStyle = "rgba(0, 200, 255, 0.10)";
+  ctx.lineWidth = 1;
+
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      let dist = Math.hypot(particles[i].x - particles[j].x, particles[i].y - particles[j].y);
+      if (dist < 130) {
+        ctx.globalAlpha = 1 - dist / 130;
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+draw();
+</script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ValiTec MJ — Perfil</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <canvas id="particleCanvas"></canvas>
+
+  <div class="app-container">
+    <aside class="sidebar">
+      <h1>ValiTec MJ</h1>
+      <nav>
+        <a href="dashboard.html">Painel</a>
+        <a href="produtos.html">Cadastrar Produto</a>
+        <a href="lista-produtos.html">Lista de Produtos</a>
+        <a href="perfil.html" class="active">Perfil</a>
+        <a href="#" onclick="localStorage.clear(); location.href='index.html'">Sair</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <h2>Configurações do Perfil</h2>
+	
+	<div class="form-perfil">
+
+  <label>Seu WhatsApp (Gerente)</label>
+  <input type="text" id="whatsGerente" placeholder="Ex: 92988001122" required>
+
+  <label>WhatsApp do Responsável pela Rebaixa</label>
+  <input type="text" id="whatsResponsavel" placeholder="Ex: 92991234567" required>
+
+  <button id="salvarPerfil" class="btnSalvar">Salvar</button>
+</div>
+
+    </main>
+  </div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
+  authDomain: "valitec-mj.firebaseapp.com",
+  projectId: "valitec-mj",
+  storageBucket: "valitec-mj.firebasestorage.app",
+  messagingSenderId: "616592039657",
+  appId: "1:616592039657:web:3827a890474111be85da78"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+document.getElementById("salvarPerfil").addEventListener("click", async () => {
+  const user = auth.currentUser;
+  if (!user) return alert("⚠️ Faça login novamente.");
+
+  const w1 = document.getElementById("whatsGerente").value.replace(/\D/g, "");
+  const w2 = document.getElementById("whatsResponsavel").value.replace(/\D/g, "");
+
+  await setDoc(doc(db, "gerentes", user.email), {
+    whatsGerente: w1,
+    whatsResponsavel: w2
+  }, { merge: true });
+
+  alert("✅ WhatsApp salvo com sucesso!");
+});
+</script>
+
+<script>
+const canvas = document.getElementById("particleCanvas");
+const ctx = canvas.getContext("2d");
+
+let particles = [];
+let w, h;
+
+function resize() {
+  w = canvas.width = window.innerWidth;
+  h = canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
+
+// Criar partículas
+for (let i = 0; i < 60; i++) {
+  particles.push({
+    x: Math.random() * w,
+    y: Math.random() * h,
+    r: Math.random() * 2 + 1,
+    dx: (Math.random() - 0.5) * 0.4,
+    dy: (Math.random() - 0.5) * 0.4
+  });
+}
+
+function draw() {
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = "rgba(0, 200, 255, 0.35)";
+
+  particles.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  connectParticles();
+  updateParticles();
+  requestAnimationFrame(draw);
+}
+
+function updateParticles() {
+  particles.forEach(p => {
+    p.x += p.dx;
+    p.y += p.dy;
+
+    if (p.x < 0 || p.x > w) p.dx *= -1;
+    if (p.y < 0 || p.y > h) p.dy *= -1;
+  });
+}
+
+function connectParticles() {
+  ctx.strokeStyle = "rgba(0, 200, 255, 0.10)";
+  ctx.lineWidth = 1;
+
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      let dist = Math.hypot(particles[i].x - particles[j].x, particles[i].y - particles[j].y);
+      if (dist < 130) {
+        ctx.globalAlpha = 1 - dist / 130;
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+draw();
+</script>
+
+</body>
+</html>
