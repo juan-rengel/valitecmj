@@ -106,6 +106,8 @@ async function carregarCalendario() {
       if (!p.dataValidadeISO) return;
       const venc = new Date(p.dataValidadeISO);
 
+      if (p.status === "rebaixado") return; // <-- NOVO
+
       if (venc.toDateString() === dataAtual.toDateString()) {
         produtosDoDia.push(p);
       }
