@@ -127,23 +127,27 @@
     "master@supernovacidade.com": "master"
   };
 
-  document.getElementById("loginForm").addEventListener("submit", async (e)=> {
-    e.preventDefault();
-    const email = email.value.trim();
-    const senha = password.value.trim();
-    const errorEl = document.getElementById("error");
+ document.getElementById("loginForm").addEventListener("submit", async (e)=> {
+  e.preventDefault();
 
-    signInWithEmailAndPassword(auth, email, senha)
-      .then(async () => {
-        const loja = lojaPorGerente[email] || "loja_cidade";
-        const cargo = (email === "master@supernovacidade.com") ? "master" : "gerente";
+  const email = document.getElementById("email").value.trim(); // ✅ AGORA DEFINIDO ANTES
+  const senha = document.getElementById("password").value.trim();
+  const errorEl = document.getElementById("error");
 
-        await setDoc(doc(db, "usuarios", email), { email, loja, cargo }, { merge:true });
+  signInWithEmailAndPassword(auth, email, senha)
+    .then(async () => {
+      const loja = lojaPorGerente[email];
+      const cargo = (email === "master@supernovacidade.com") ? "master" : "gerente";
 
-        window.location.href = "dashboard.html";
-      })
-      .catch(() => { errorEl.textContent = "Email ou senha incorretos."; });
-  });
+      await setDoc(doc(db, "usuarios", email), { email, loja, cargo }, { merge:true });
+
+      localStorage.setItem("usuarioLogado", email);
+      window.location.href = "dashboard.html";
+    })
+    .catch(() => { 
+      errorEl.textContent = "Email ou senha incorretos."; 
+    });
+});
 </script>
 
 <script>
