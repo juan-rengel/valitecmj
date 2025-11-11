@@ -31,11 +31,11 @@
   <h2 class="page-title">Configurações do Perfil</h2>
 
   <form id="formPerfil" class="perfil-box">
-    <label>Seu WhatsApp (Gerente)</label>
-    <input type="text" id="whatsGerente" placeholder="Ex: 92988001122" required>
+    <label>WhatsApp do Gerente</label>
+<input type="text" id="whatsGerente" placeholder="Ex: 92988001122">
 
-    <label>WhatsApp do Responsável pela Rebaixa</label>
-    <input type="text" id="whatsResponsavel" placeholder="Ex: 92991234567" required>
+<label>WhatsApp do Responsável pela Rebaixa</label>
+<input type="text" id="whatsResponsavel" placeholder="Ex: 92991234567">
 
     <button id="salvarPerfil" class="btn-primary">💾 Salvar Alterações</button>
   </form>
@@ -44,8 +44,8 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, setDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
@@ -60,21 +60,41 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-document.getElementById("salvarPerfil").addEventListener("click", async () => {
-  const user = auth.currentUser;
-  if (!user) return alert("⚠️ Faça login novamente.");
+let lojaAtual = null;
 
-  const w1 = document.getElementById("whatsGerente").value.replace(/\D/g, "");
-  const w2 = document.getElementById("whatsResponsavel").value.replace(/\D/g, "");
+// ✅ BUSCA AUTOMÁTICA DA LOJA COM BASE NO USUÁRIO LOGADO
+onAuthStateChanged(auth, async (user) => {
+  if (!user) return;
 
-  await setDoc(doc(db, "gerentes", user.email), {
-    whatsGerente: w1,
-    whatsResponsavel: w2
+  const snap = await getDoc(doc(db, "usuarios", user.email));
+  lojaAtual = snap.data().loja;
+
+  // ✅ Carrega valores salvos, se existir
+  const confSnap = await getDoc(doc(db, `lojas/${lojaAtual}/config`));
+  if (confSnap.exists()) {
+    document.getElementById("whatsGerente").value = confSnap.data().gerenteWhats || "";
+    document.getElementById("whatsResponsavel").value = confSnap.data().responsavelWhats || "";
+  }
+});
+
+// ✅ SALVAR CONFIGURAÇÕES
+document.getElementById("salvarPerfil").onclick = async (e) => {
+  e.preventDefault();
+
+  const gerente = document.getElementById("whatsGerente").value.replace(/\D/g, "");
+  const responsavel = document.getElementById("whatsResponsavel").value.replace(/\D/g, "");
+
+  if (!lojaAtual) return alert("⚠️ Não foi possível identificar sua loja.");
+
+  await setDoc(doc(db, `lojas/${lojaAtual}/config`), {
+    gerenteWhats: gerente,
+    responsavelWhats: responsavel
   }, { merge: true });
 
-  alert("✅ WhatsApp salvo com sucesso!");
-});
+  alert("✅ Configurações salvas com sucesso!");
+};
 </script>
+
 
 <script>
 const canvas = document.getElementById("particleCanvas");

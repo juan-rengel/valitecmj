@@ -115,16 +115,43 @@ function exibirLista(listaProdutos) {
     const diff = Math.ceil((new Date(p.dataValidadeISO) - new Date()) / (86400000));
     let cor = diff <= 5 ? "#ff4d4d" : diff <= 10 ? "#ff9f43" : diff <= 15 ? "#ffe66d" : "#4eff9a";
 
-    // === Botão Rebaixar (TODOS PODEM) ===
-    const btnRebaixar = document.createElement("button");
-    btnRebaixar.textContent = `✅ Rebaixar (${diff}d)`;
-    btnRebaixar.style.background = cor;
-    btnRebaixar.style.color = "#000";
-    btnRebaixar.onclick = async () => {
-      await updateDoc(doc(db, `lojas/${loja}/produtos/${p.id}`), { status: "rebaixado" });
-      carregarProdutos();
-    };
-    item.appendChild(btnRebaixar);
+   // === Botão Rebaixar (Agora envia WhatsApp ao gerente) ===
+const btnConfirm = document.createElement("button");
+btnConfirm.textContent = `✅ Rebaixar (${diff}d)`;
+btnConfirm.style.background = corBtn;
+btnConfirm.style.color = "#000";
+btnConfirm.style.padding = "8px 10px";
+btnConfirm.style.borderRadius = "6px";
+btnConfirm.style.fontWeight = "600";
+btnConfirm.style.cursor = "pointer";
+
+btnConfirm.onclick = async () => {
+
+  // Atualiza produto como rebaixado
+  await updateDoc(doc(db, `lojas/${loja}/produtos/${p.id}`), { status: "rebaixado" });
+
+  // Busca o número do gerente salvo na loja
+  const confSnap = await getDoc(doc(db, `lojas/${loja}/config`));
+  const gerenteWhats = confSnap.exists() ? confSnap.data().gerenteWhats : null;
+
+  if (gerenteWhats) {
+    const msg = `
+📉 *PRODUTO REBAIXADO*
+    
+📦 *${p.nome}*
+🏷️ Setor: ${p.setor}
+🔖 Lote: ${p.lote}
+📅 Validade: ${p.dataValidadeBR}
+`;
+
+    // Abre WhatsApp para avisar o gerente
+    window.open(`https://wa.me/55${gerenteWhats}?text=${encodeURIComponent(msg)}`);
+  }
+
+  carregarProdutos();
+};
+
+item.appendChild(btnConfirm);
 
     // ✅ Se NÃO for responsável → pode EDITAR e EXCLUIR
     if (cargo !== "responsavel") {

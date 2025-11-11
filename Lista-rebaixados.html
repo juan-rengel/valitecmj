@@ -89,17 +89,33 @@ function exibirLista(lista) {
       </div>
     `;
 
-    // 🔄 Reverter
-    const btnReverter = document.createElement("button");
-    btnReverter.textContent = "↩️ Reverter";
-    btnReverter.className = "btnConfirm";
-    btnReverter.style.background = "#4eff9a";
-    btnReverter.style.color = "#000";
     btnReverter.onclick = async () => {
-      await updateDoc(doc(db, `lojas/${p.loja}/produtos/${p.id}`), { status: "normal" });
-      carregarRebaixados();
-    };
+  await updateDoc(doc(db, `lojas/${p.loja}/produtos/${p.id}`), { status: "normal" });
 
+  // Buscar número salvo no perfil
+  const perfilRef = doc(db, "gerentes", auth.currentUser.email);
+  const perfilSnap = await getDoc(perfilRef);
+  const dados = perfilSnap.data();
+
+  const numeroResponsavel = dados?.whatsResponsavel;
+
+  if (numeroResponsavel) {
+    const msg = `
+↩️ *PRODUTO REVERTIDO AO PREÇO NORMAL*
+
+📦 *${p.nome}*
+🏷️ Setor: ${p.setor}
+🔖 Lote: ${p.lote}
+📅 Validade: ${p.dataValidadeBR}
+    `;
+
+    window.open(`https://wa.me/55${numeroResponsavel}?text=${encodeURIComponent(msg)}`);
+  } else {
+    alert("⚠️ WhatsApp do responsável não está configurado no Perfil.");
+  }
+
+  carregarRebaixados();
+};
     // 🗑️ Excluir
     const btnExcluir = document.createElement("button");
     btnExcluir.textContent = "🗑️ Excluir";
