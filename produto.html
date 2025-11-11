@@ -15,8 +15,11 @@
       <h1> <br></h1>
       <nav>
         <a href="dashboard.html">Painel</a>
-        <a href="lista-produtos.html">Produtos</a>
-        <a href="produtos.html" class="active">Novo Produto</a>
+        <a href="#" class="active">
+            cadastrar produtos
+        </a>
+        <a href="lista-produtos.html">Lista de produtos</a>
+        <a href="calendario.html">Calendario</a>
         <a href="perfil.html">Perfil</a>
         <a href="#" onclick="localStorage.clear(); location.href='index.html'">Sair</a>
       </nav>
@@ -124,11 +127,11 @@ formProduto.addEventListener('submit', async e => {
   const snap = await getDoc(doc(db, "usuarios", user.email));
   const loja = snap.data().loja;
 
-  const nome = nome.value;
-  const codigo = codigo.value;
-  const lote = lote.value;
-  const setor = setor.value;
-  const validade = validade.value;
+  const nomeProduto = document.getElementById("nome").value;
+const codigoProduto = document.getElementById("codigo").value;
+const loteProduto = document.getElementById("lote").value;
+const setorProduto = document.getElementById("setor").value;
+const validadeProduto = document.getElementById("validade").value;
   const [yyyy, mm, dd] = validade.split("-");
   const validadeBR = `${dd}/${mm}/${yyyy}`;
   const foto = foto.files[0];
