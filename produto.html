@@ -76,12 +76,9 @@
   </div>
 
   <!-- Biblioteca do leitor de código de barras -->
-<script src="https://unpkg.com/@zxing/browser@latest"></script>
+<script src="https://unpkg.com/@zxing/browser@0.1.1"></script>
 
 <script>
-
- 
- 
 // === CÂMERA ===
 let stream;
 const cameraPreview = document.getElementById('cameraPreview');
@@ -123,36 +120,33 @@ const scannerPreview = document.getElementById("scannerPreview");
 
 btnScan.onclick = async () => {
 
+  // Mostra o preview
   scannerPreview.style.display = "block";
 
-  // Criador do leitor
-  const codeReader = new ZXing.BrowserMultiFormatReader();
+  // Usa o objeto correto do ZXing
+  const codeReader = new ZXingBrowser.BrowserMultiFormatReader();
 
-  // Lista câmeras disponíveis
-  const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
+  // Lista câmeras
+  const devices = await ZXingBrowser.BrowserMultiFormatReader.listVideoInputDevices();
 
   if (!devices || devices.length === 0) {
-    alert("Nenhuma câmera encontrada. Dê permissão para a câmera e tente novamente.");
+    alert("Nenhuma câmera encontrada! Dê permissão e recarregue a página.");
     scannerPreview.style.display = "none";
     return;
   }
 
-  // Pega a câmera traseira (normalmente a última)
-  const backCamera = devices[devices.length - 1].deviceId;
+  // pega a câmera traseira (geralmente a última)
+  const backCam = devices[devices.length - 1].deviceId;
 
-  // Inicia leitura
-  codeReader.decodeFromVideoDevice(backCamera, scannerPreview, (result, err) => {
+  // inicia leitura
+  codeReader.decodeFromVideoDevice(backCam, scannerPreview, (result, err) => {
     if (result) {
       document.getElementById("codigo").value = result.getText();
-
-      // Feedback visual ✅
       document.getElementById("codigo").style.border = "2px solid #00ff9d";
 
-      // Finaliza
-      setTimeout(() => {
-        scannerPreview.style.display = "none";
-        codeReader.reset();
-      }, 300);
+      // parar câmera
+      codeReader.reset();
+      scannerPreview.style.display = "none";
     }
   });
 };
