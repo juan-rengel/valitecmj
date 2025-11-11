@@ -347,6 +347,12 @@ button:active, .btnSalvar:active{transform:translateY(1px)}
   transform: scale(1.12);
   filter: brightness(1.3);
 }
-.N{
-  color: #690000cc;
+.btnDelete {
+  transition: 0.25s ease;
+}
+
+.btnDelete:hover {
+  background: #ff8787; /* vermelho mais claro ao passar o mouse */
+  transform: scale(1.06);
+  box-shadow: 0 0 10px rgba(255, 120, 120, 0.6);
 }

@@ -37,8 +37,10 @@ style="margin-bottom: 16px; padding: 10px 14px; width:100%; border-radius:12px; 
     </main>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, getDocs, getDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, getDoc, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+let loja = null; // <-- loja agora é global
 
 const firebaseConfig = {
   apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
@@ -48,6 +50,7 @@ const firebaseConfig = {
   messagingSenderId: "616592039657",
   appId: "1:616592039657:web:3827a890474111be85da78"
 };
+
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -61,7 +64,7 @@ async function carregarProdutos() {
 
   const userRef = doc(db, "usuarios", user.email);
   const userSnap = await getDoc(userRef);
-  const loja = userSnap.data().loja;
+  loja = userSnap.data().loja;
 
   const ref = collection(db, `lojas/${loja}/produtos`);
   const snap = await getDocs(ref);
@@ -75,7 +78,6 @@ async function carregarProdutos() {
 
   exibirLista(produtosCarregados);
 }
-
 function exibirLista(listaProdutos) {
   const lista = document.getElementById('listaProdutos');
   lista.innerHTML = '';
@@ -88,14 +90,18 @@ function exibirLista(listaProdutos) {
     img.src = p.fotoURL || '';
 
     const info = document.createElement('div');
-    info.innerHTML = `<strong>${p.nome}</strong><br>${p.setor}<br>Validade: ${p.dataValidadeBR}`;
+    info.innerHTML = `
+      <strong>${p.nome}</strong><br>
+      ${p.setor}<br>
+      Validade: ${p.dataValidadeBR}
+    `;
 
     item.appendChild(img);
     item.appendChild(info);
 
-    // Botão WhatsApp
+    // === Botão WhatsApp ===
     const btnW = document.createElement('button');
-    btnW.textContent = "🟢 Rebaixa via WhatsApp";
+    btnW.textContent = "🟢 WhatsApp";
     btnW.className = "btnWhats";
     btnW.addEventListener("click", async () => {
       const perfilRef = doc(db, "gerentes", auth.currentUser.email);
@@ -109,41 +115,63 @@ function exibirLista(listaProdutos) {
     });
     item.appendChild(btnW);
 
- // === CALCULA DIAS PARA VENCER ===
-const hoje = new Date();
-const validade = new Date(p.dataValidadeISO);
-const diff = Math.ceil((validade - hoje) / (1000*60*60*24)); // dias restantes
 
-// === DEFINE A COR DO BOTÃO ===
-let corBtn = "#e6e6e6cc"; // padrão seguro
+    // === Cores Inteligentes ===
+    const hoje = new Date();
+    const validade = new Date(p.dataValidadeISO);
+    const diff = Math.ceil((validade - hoje) / (1000*60*60*24));
 
-if (diff <= 5) corBtn = "#ff4d4d";        // vermelho urgente
-else if (diff <= 10) corBtn = "#ff9f43";  // laranja
-else if (diff <= 15) corBtn = "#ffe66d";  // amarelo
+    let corBtn = "#e6e6e6cc";
+    if (diff <= 5) corBtn = "#ff4d4d";
+    else if (diff <= 10) corBtn = "#ff9f43";
+    else if (diff <= 15) corBtn = "#ffe66d";
 
-// === BOTÃO CONFIRMAR REBAIXA ===
-const btnConfirm = document.createElement("button");
-btnConfirm.textContent = `✅ Rebaixar (${diff}d)`; // mostra quantos dias faltam
-btnConfirm.style.background = corBtn;
-btnConfirm.style.color = "#000";
-btnConfirm.style.padding = "8px 10px";
-btnConfirm.style.borderRadius = "6px";
-btnConfirm.style.fontWeight = "600";
-btnConfirm.style.cursor = "pointer";
-btnConfirm.onclick = async () => {
-  await updateDoc(doc(db, `lojas/${loja}/produtos/${p.id}`), { status: "rebaixado" });
-  carregarProdutos(); // atualiza lista
-};
-item.appendChild(btnConfirm);
+    // === Botão Rebaixar ===
+    const btnConfirm = document.createElement("button");
+    btnConfirm.textContent = `✅ Rebaixar (${diff}d)`;
+    btnConfirm.style.background = corBtn;
+    btnConfirm.style.color = "#000";
+    btnConfirm.style.padding = "8px 10px";
+    btnConfirm.style.borderRadius = "6px";
+    btnConfirm.style.fontWeight = "600";
+    btnConfirm.style.cursor = "pointer";
+    btnConfirm.onclick = async () => {
+      await updateDoc(doc(db, `lojas/${loja}/produtos/${p.id}`), { status: "rebaixado" });
+      carregarProdutos();
+    };
+    item.appendChild(btnConfirm);
 
-    // Botão Editar ✏️
-const btnEdit = document.createElement("button");
-btnEdit.textContent = "✏️ Editar";
-btnEdit.className = "btnEdit";
-btnEdit.addEventListener("click", () => {
-  window.location.href = `produto.html?id=${p.id}`;
-});
-item.appendChild(btnEdit);
+
+    // === Botão Editar ===
+    const btnEdit = document.createElement("button");
+    btnEdit.textContent = "✏️ Editar";
+    btnEdit.className = "btnEdit";
+    btnEdit.addEventListener("click", () => {
+      window.location.href = `produto.html?id=${p.id}`;
+    });
+    item.appendChild(btnEdit);
+
+
+    // === Botão Excluir (AGORA FUNCIONANDO) ===
+    const btnExcluir = document.createElement("button");
+    btnExcluir.textContent = "🗑️ Excluir";
+    btnExcluir.className = "btnDelete";
+    btnExcluir.style.background = "#ff6b6b";
+    btnExcluir.style.color = "#1a1a1a";
+    btnExcluir.style.padding = "8px 10px";
+    btnExcluir.style.borderRadius = "6px";
+    btnExcluir.style.fontWeight = "600";
+    btnExcluir.style.cursor = "pointer";
+    btnExcluir.style.border = "none";
+
+    btnExcluir.onclick = async () => {
+      if (confirm(`⚠️ Deseja excluir o produto?\n\n${p.nome}\nLote: ${p.lote}`)) {
+        await deleteDoc(doc(db, `lojas/${loja}/produtos/${p.id}`));
+        carregarProdutos();
+      }
+    };
+
+    item.appendChild(btnExcluir);
 
     lista.appendChild(item);
   });
