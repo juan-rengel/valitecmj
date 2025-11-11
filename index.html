@@ -102,13 +102,17 @@
 
     <button type="submit">Entrar</button>
     <p id="error" class="error"></p>
+    <a href="redefinir-senha.html" style="display:block;margin-top:8px;text-align:center;color:#4eff9a;font-size:13px;">
+  Esqueci minha senha
+</a>
+
   </form>
 </div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
@@ -123,32 +127,55 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
 
+  // ✅ Mapeamento de e-mails para lojas
   const lojaPorGerente = {
+    "cd@supernovacidade.com": "loja_cd_cidade",
+    "novacidade@supernovacidade.com": "loja_cidade",
+    "terranova@supernovacidade.com": "loja_terranova",
+    "manoa@supernovacidade.com": "loja_manoa",
+    "zumbi@supernovacidade.com": "loja_zumbi",
+    "oswaldofrota@supernovacidade.com": "loja_oswaldo",
+    "mosaico@supernovacidade.com": "loja_mosaico",
     "master@supernovacidade.com": "master"
   };
 
- document.getElementById("loginForm").addEventListener("submit", async (e)=> {
+document.getElementById("loginForm").addEventListener("submit", async (e)=> {
   e.preventDefault();
 
-  const email = document.getElementById("email").value.trim(); // ✅ AGORA DEFINIDO ANTES
+  const email = document.getElementById("email").value.trim().toLowerCase();
   const senha = document.getElementById("password").value.trim();
   const errorEl = document.getElementById("error");
 
-  signInWithEmailAndPassword(auth, email, senha)
-    .then(async () => {
-      const loja = lojaPorGerente[email];
-      const cargo = (email === "master@supernovacidade.com") ? "master" : "gerente";
+  try {
+    const userCred = await signInWithEmailAndPassword(auth, email, senha);
 
-      await setDoc(doc(db, "usuarios", email), { email, loja, cargo }, { merge:true });
+    const ref = doc(db, "usuarios", email);
+    const snap = await getDoc(ref);
 
-      localStorage.setItem("usuarioLogado", email);
-      window.location.href = "dashboard.html";
-    })
-    .catch(() => { 
-      errorEl.textContent = "Email ou senha incorretos."; 
-    });
+    let loja, cargo;
+
+    if (snap.exists()) {
+
+      loja = snap.data().loja;
+      cargo = snap.data().gerentes;  // ✅ CORRIGIDO
+
+    } else {
+      loja = prompt("Digite o código da loja (ex: loja_manoa):");
+      cargo = "gerente"; // padrão
+
+      await setDoc(ref, { email, loja, gerentes: cargo }, { merge:true });
+    }
+
+    localStorage.setItem("usuarioLogado", email);
+    window.location.href = "dashboard.html";
+
+  } catch (e) {
+    errorEl.textContent = "Email ou senha incorretos.";
+  }
 });
+
 </script>
+
 
 <script>
 // Partículas

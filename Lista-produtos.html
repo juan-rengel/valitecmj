@@ -23,6 +23,7 @@
         <a href="Lista-rebaixados.html">Produtos Rebaixados</a>
         <a href="calendario.html">Calendario</a>
         <a href="perfil.html">Perfil</a>
+        <a href="cadastro-usuarios.html">Cadastrar Usuários</a>
         <a href="#" onclick="localStorage.clear(); location.href='index.html'">Sair</a>
       </nav>
     </aside>
@@ -41,7 +42,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getFirestore, collection, getDocs, getDoc, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-let loja = null; // <-- loja agora é global
+let loja = null;
+let cargo = null; // ✅ agora cargo é global
 
 const firebaseConfig = {
   apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
@@ -52,12 +54,11 @@ const firebaseConfig = {
   appId: "1:616592039657:web:3827a890474111be85da78"
 };
 
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-let produtosCarregados = []; // lista em memória
+let produtosCarregados = [];
 
 async function carregarProdutos() {
   const user = auth.currentUser;
@@ -65,7 +66,9 @@ async function carregarProdutos() {
 
   const userRef = doc(db, "usuarios", user.email);
   const userSnap = await getDoc(userRef);
+
   loja = userSnap.data().loja;
+  cargo = userSnap.data().cargo; // ✅ agora cargo é reconhecido corretamente
 
   const ref = collection(db, `lojas/${loja}/produtos`);
   const snap = await getDocs(ref);
@@ -73,12 +76,13 @@ async function carregarProdutos() {
   produtosCarregados = [];
   snap.forEach(docItem => {
     const p = docItem.data();
-    if (p.status === "rebaixado") return; // Não mostra rebaixados aqui
+    if (p.status === "rebaixado") return;
     produtosCarregados.push({ id: docItem.id, ...p });
   });
 
   exibirLista(produtosCarregados);
 }
+
 function exibirLista(listaProdutos) {
   const lista = document.getElementById('listaProdutos');
   lista.innerHTML = '';
@@ -87,178 +91,81 @@ function exibirLista(listaProdutos) {
     const item = document.createElement('div');
     item.className = 'produto-card';
 
-    const img = document.createElement('img');
-    img.src = p.fotoURL || '';
-
-    const info = document.createElement('div');
-    info.innerHTML = `
-      <strong>${p.nome}</strong><br>
-      ${p.setor}<br>
-      Validade: ${p.dataValidadeBR}
+    item.innerHTML = `
+      <img src="${p.fotoURL}" style="width:70px;border-radius:6px;">
+      <div style="flex:1;">
+        <strong>${p.nome}</strong><br>
+        ${p.setor}<br>
+        Validade: ${p.dataValidadeBR}
+      </div>
     `;
 
-    item.appendChild(img);
-    item.appendChild(info);
-
     // === Botão WhatsApp ===
-    const btnW = document.createElement('button');
-    btnW.textContent = "🟢 WhatsApp";
-    btnW.className = "btnWhats";
-    btnW.addEventListener("click", async () => {
-      const perfilRef = doc(db, "gerentes", auth.currentUser.email);
-      const perfilSnap = await getDoc(perfilRef);
-      const dados = perfilSnap.data();
-      const numero = dados.whatsResponsavel;
+    const btnWhats = document.createElement("button");
+    btnWhats.textContent = "🟢 WhatsApp";
+    btnWhats.className = "btnWhats";
+    btnWhats.onclick = async () => {
+      const perfil = await getDoc(doc(db, "gerentes", auth.currentUser.email));
+      const numero = perfil.data()?.whatsResponsavel || "";
+      window.open(`https://wa.me/55${numero}?text=⚠️ *Rebaixa Solicitada*\n\nProduto: ${p.nome}\nValidade: ${p.dataValidadeBR}`);
+    };
+    item.appendChild(btnWhats);
 
-      const msg = `⚠️ SOLICITAÇÃO DE REBAIXA\n\n📦 *${p.nome}*\n🔖 Lote: ${p.lote}\n🏷️ Setor: ${p.setor}\n🧾 Código: ${p.codigo}\n📅 Validade: ${p.dataValidadeBR}`;
+    // === Diferença de dias para cor ===
+    const diff = Math.ceil((new Date(p.dataValidadeISO) - new Date()) / (86400000));
+    let cor = diff <= 5 ? "#ff4d4d" : diff <= 10 ? "#ff9f43" : diff <= 15 ? "#ffe66d" : "#4eff9a";
 
-      window.open(`https://wa.me/55${numero}?text=${encodeURIComponent(msg)}`);
-    });
-    item.appendChild(btnW);
-
-
-    // === Cores Inteligentes ===
-    const hoje = new Date();
-    const validade = new Date(p.dataValidadeISO);
-    const diff = Math.ceil((validade - hoje) / (1000*60*60*24));
-
-    let corBtn = "#e6e6e6cc";
-    if (diff <= 5) corBtn = "#ff4d4d";
-    else if (diff <= 10) corBtn = "#ff9f43";
-    else if (diff <= 15) corBtn = "#ffe66d";
-
-    // === Botão Rebaixar ===
-    const btnConfirm = document.createElement("button");
-    btnConfirm.textContent = `✅ Rebaixar (${diff}d)`;
-    btnConfirm.style.background = corBtn;
-    btnConfirm.style.color = "#000";
-    btnConfirm.style.padding = "8px 10px";
-    btnConfirm.style.borderRadius = "6px";
-    btnConfirm.style.fontWeight = "600";
-    btnConfirm.style.cursor = "pointer";
-    btnConfirm.onclick = async () => {
+    // === Botão Rebaixar (TODOS PODEM) ===
+    const btnRebaixar = document.createElement("button");
+    btnRebaixar.textContent = `✅ Rebaixar (${diff}d)`;
+    btnRebaixar.style.background = cor;
+    btnRebaixar.style.color = "#000";
+    btnRebaixar.onclick = async () => {
       await updateDoc(doc(db, `lojas/${loja}/produtos/${p.id}`), { status: "rebaixado" });
       carregarProdutos();
     };
-    item.appendChild(btnConfirm);
+    item.appendChild(btnRebaixar);
 
+    // ✅ Se NÃO for responsável → pode EDITAR e EXCLUIR
+    if (cargo !== "responsavel") {
 
-    // === Botão Editar ===
-    const btnEdit = document.createElement("button");
-    btnEdit.textContent = "✏️ Editar";
-    btnEdit.className = "btnEdit";
-    btnEdit.addEventListener("click", () => {
-      window.location.href = `produto.html?id=${p.id}`;
-    });
-    item.appendChild(btnEdit);
+      const btnEditar = document.createElement("button");
+      btnEditar.textContent = "✏️ Editar";
+      btnEditar.className = "btnEdit";
+      btnEditar.onclick = () => location.href = `produto.html?id=${p.id}`;
+      item.appendChild(btnEditar);
 
-
-    // === Botão Excluir (AGORA FUNCIONANDO) ===
-    const btnExcluir = document.createElement("button");
-    btnExcluir.textContent = "🗑️ Excluir";
-    btnExcluir.className = "btnDelete";
-    btnExcluir.style.background = "#ff6b6b";
-    btnExcluir.style.color = "#1a1a1a";
-    btnExcluir.style.padding = "8px 10px";
-    btnExcluir.style.borderRadius = "6px";
-    btnExcluir.style.fontWeight = "600";
-    btnExcluir.style.cursor = "pointer";
-    btnExcluir.style.border = "none";
-
-    btnExcluir.onclick = async () => {
-      if (confirm(`⚠️ Deseja excluir o produto?\n\n${p.nome}\nLote: ${p.lote}`)) {
-        await deleteDoc(doc(db, `lojas/${loja}/produtos/${p.id}`));
-        carregarProdutos();
-      }
-    };
-
-    item.appendChild(btnExcluir);
+      const btnExcluir = document.createElement("button");
+      btnExcluir.textContent = "🗑️ Excluir";
+      btnExcluir.className = "btnDelete";
+      btnExcluir.style.background = "#ff6b6b";
+      btnExcluir.style.color = "#000";
+      btnExcluir.onclick = async () => {
+        if (confirm(`Excluir ${p.nome}?`)) {
+          await deleteDoc(doc(db, `lojas/${loja}/produtos/${p.id}`));
+          carregarProdutos();
+        }
+      };
+      item.appendChild(btnExcluir);
+    }
 
     lista.appendChild(item);
   });
 }
 
-// Busca Instantânea
-document.getElementById("busca")?.addEventListener("input", (e) => {
+// 🔍 Busca Instantânea
+document.getElementById("busca").addEventListener("input", e => {
   const termo = e.target.value.toLowerCase();
-  const filtrados = produtosCarregados.filter(p =>
+  exibirLista(produtosCarregados.filter(p =>
     p.nome.toLowerCase().includes(termo) ||
     p.setor.toLowerCase().includes(termo) ||
     p.codigo.toLowerCase().includes(termo)
-  );
-  exibirLista(filtrados);
+  ));
 });
 
 auth.onAuthStateChanged(carregarProdutos);
-
-
-// --- Verifica se é edição ---
-const params = new URLSearchParams(window.location.search);
-const produtoIdEdicao = params.get("id");
-
-if (produtoIdEdicao) {
-  // Muda o título e botão
-  document.querySelector("h2").textContent = "Editar Produto";
-  document.querySelector(".btnSalvar").textContent = "Salvar Alterações";
-
-  // Carrega dados do produto
-  auth.onAuthStateChanged(async user => {
-    if (!user) return;
-    const snapUser = await getDoc(doc(db, "usuarios", user.email));
-    const loja = snapUser.data().loja;
-
-    const prodRef = doc(db, `lojas/${loja}/produtos/${produtoIdEdicao}`);
-    const prodSnap = await getDoc(prodRef);
-    const p = prodSnap.data();
-
-    nome.value = p.nome;
-    codigo.value = p.codigo;
-    lote.value = p.lote;
-    setor.value = p.setor;
-    validade.value = p.dataValidadeISO;
-    previewFoto.src = p.fotoURL;
-    previewFoto.style.display = "block";
-
-    // Evita foto obrigatória ao editar
-    document.getElementById("foto").required = false;
-  });
-
-  // Salvar alteração
-  formProduto.onsubmit = async (e) => {
-    e.preventDefault();
-    const user = auth.currentUser;
-    const snapUser = await getDoc(doc(db, "usuarios", user.email));
-    const loja = snapUser.data().loja;
-
-    const isoDate = validade.value;
-    const [yyyy, mm, dd] = isoDate.split("-");
-    const brDate = `${dd}/${mm}/${yyyy}`;
-
-    let fotoURLFinal = previewFoto.src;
-
-    // Se nova foto foi capturada
-    if (foto.files.length > 0) {
-      const fotoRef = ref(storage, `${loja}/${produtoIdEdicao}.jpg`);
-      await uploadBytes(fotoRef, foto.files[0]);
-      fotoURLFinal = await getDownloadURL(fotoRef);
-    }
-
-    await setDoc(doc(db, `lojas/${loja}/produtos/${produtoIdEdicao}`), {
-      nome: nome.value,
-      codigo: codigo.value,
-      lote: lote.value,
-      setor: setor.value,
-      dataValidadeISO: isoDate,
-      dataValidadeBR: brDate,
-      fotoURL: fotoURLFinal,
-      status: "normal",
-    }, { merge: true });
-
-    window.location.href = "lista-produtos.html";
-  };
-}
-
 </script>
+
 
 
 <script>

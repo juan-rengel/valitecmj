@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ValiTec MJ — Cadastro de Usuários</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+<canvas id="particleCanvas"></canvas>
+
+<div class="app-container">
+  <aside class="sidebar">
+    <h1>ValiTec MJ</h1>
+    <nav>
+      <a href="dashboard.html">Painel</a>
+      <a href="produto.html">Cadastrar Produto</a>
+      <a href="Lista-produtos.html">Lista de Produtos</a>
+      <a href="Lista-rebaixados.html">Produtos Rebaixados</a>
+      <a href="calendario.html">Calendário</a>
+      <a href="perfil.html">Perfil</a>
+      <a href="#" class="active">Cadastro de Usuários</a>
+      <a href="#" onclick="localStorage.clear(); location.href='index.html'">Sair</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <h2 style="text-align:center;">Cadastrar Novo Usuário</h2>
+
+    <form id="formUser" class="form-produto" style="max-width:480px;margin:auto;">
+
+      <label>Email do Usuário</label>
+      <input type="email" id="emailUser" required>
+
+      <label>Senha</label>
+      <input type="password" id="senhaUser" required>
+
+      <label>Loja</label>
+      <select id="lojaUser" required>
+        <option value="loja_cd_cidade">CD Cidade</option>
+        <option value="loja_cidade">Cidade Nova</option>
+        <option value="loja_terranova">Terra Nova</option>
+        <option value="loja_manoa">Manoa</option>
+        <option value="loja_zumbi">Zumbi</option>
+        <option value="loja_oswaldo">Oswaldo</option>
+        <option value="loja_mosaico">Mosaico</option>
+      </select>
+
+      <label>Cargo / Permissão</label>
+      <select id="cargoUser" required>
+        <option value="gerente">Gerente</option>
+        <option value="auxiliar">Auxiliar</option>
+        <option value="responsavel">Responsável pela Rebaixa</option>
+      </select>
+
+      <button type="submit" class="btnSalvar">Criar Usuário</button>
+      <p id="msg" style="text-align:center;margin-top:12px;color:#4eff9a;"></p>
+    </form>
+  </main>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
+  authDomain: "valitec-mj.firebaseapp.com",
+  projectId: "valitec-mj",
+  storageBucket: "valitec-mj.firebasestorage.app",
+  messagingSenderId: "616592039657",
+  appId: "1:616592039657:web:3827a890474111be85da78"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+// ✅ SOMENTE MASTER PODE ACESSAR ESSA PÁGINA
+onAuthStateChanged(auth, async (user)=>{
+  if (!user) return location.href="index.html";
+
+  const snap = await getDoc(doc(db, "usuarios", user.email));
+  if (!snap.exists() || snap.data().cargo !== "master") {
+    alert("⚠️ Apenas o MASTER pode acessar esta página.");
+    location.href = "dashboard.html";
+  }
+});
+
+// ✅ Criar Usuário
+formUser.onsubmit = async (e)=>{
+  e.preventDefault();
+
+  const email = emailUser.value.trim().toLowerCase();
+  const senha = senhaUser.value.trim();
+  const loja = lojaUser.value;
+  const cargo = cargoUser.value;
+
+  try {
+    await createUserWithEmailAndPassword(auth, email, senha);
+
+    await setDoc(doc(db, "usuarios", email), { email, loja, cargo }, { merge:true });
+
+    msg.textContent = "✅ Usuário criado com sucesso!";
+    formUser.reset();
+  } catch (err) {
+    msg.textContent = "❌ Erro: " + err.message;
+  }
+};
+</script>
+
+<script>
+// Menu Hambúrguer
+const sidebar = document.querySelector('.sidebar');
+const hamburger = document.createElement('button');
+hamburger.className = 'hamburger';
+hamburger.textContent = '☰';
+hamburger.onclick = () => sidebar.classList.toggle('open');
+document.body.appendChild(hamburger);
+</script>
+
+</body>
+</html>
