@@ -76,7 +76,7 @@
   </div>
 
   <!-- Biblioteca do leitor de código de barras -->
-<script src="https://unpkg.com/@zxing/library@latest"></script>
+<script src="https://unpkg.com/@zxing/browser@latest"></script>
 
 
 <script>
@@ -118,16 +118,16 @@ btnCapturar.onclick = () => {
   cameraPreview.style.display = "none";
   btnCapturar.style.display = "none";
 };
-
 // === LEITOR DE CÓDIGO DE BARRAS (ZXing) ===
 const scannerPreview = document.getElementById("scannerPreview");
 const btnScan = document.getElementById("btnScan");
-let codeReader = new ZXing.BrowserMultiFormatReader();
 
 btnScan.onclick = async () => {
   scannerPreview.style.display = "block";
 
-  const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
+  const codeReader = new ZXingBrowser.BrowserMultiFormatReader();
+
+  const devices = await ZXingBrowser.BrowserMultiFormatReader.listVideoInputDevices();
   const backCamera = devices[devices.length - 1].deviceId;
 
   codeReader.decodeFromVideoDevice(backCamera, "scannerPreview", (result, err) => {
