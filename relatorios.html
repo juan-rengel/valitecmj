@@ -13,49 +13,163 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-  <style>
-    .filters {
-      display: flex; flex-wrap: wrap; gap: 10px;
-      margin-bottom: 20px; align-items: center;
-    }
-    .filters select, .filters input {
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 8px;
-      color: #fff; padding: 8px 12px; font-size: 14px; outline: none;
-    }
-    .filters label { color: #9fdfff; font-size: 13px; }
+ <style>
+  :root {
+    --accent: #00c8ff;
+    --bg-dark: #0a0f1f;
+    --card-bg: rgba(255, 255, 255, 0.08);
+    --text-light: #e2e8f0;
+  }
 
-    .export-btns { display: flex; gap: 12px; justify-content: flex-end; margin-bottom: 20px; }
-    .export-btn {
-      background: var(--accent, #00c8ff);
-      border: none; color: #000; font-weight: 600;
-      padding: 10px 16px; border-radius: 8px; cursor: pointer; transition: 0.3s;
-    }
-    .export-btn:hover { background: #4eff9a; }
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-light);
+    margin: 0;
+    overflow-x: hidden;
+  }
 
-    /* Cards de resumo */
-    .resumo-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 15px;
-      margin-bottom: 25px;
-    }
-    .resumo-card {
-      background: rgba(255,255,255,0.08);
-      border-radius: 12px;
-      padding: 15px;
-      text-align: center;
-      color: #fff;
-      box-shadow: 0 0 8px rgba(0,200,255,0.15);
-    }
-    .resumo-card h3 {
-      font-size: 28px; color: #4eff9a; margin: 5px 0;
-    }
-    .resumo-card p { font-size: 13px; color: #ccc; margin: 0; }
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+    align-items: center;
+  }
 
-    .ranking-item { margin: 6px 0; font-size: 14px; }
-  </style>
+  .filters select, .filters input {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 8px;
+    color: #fff;
+    padding: 8px 12px;
+    font-size: 14px;
+    outline: none;
+  }
+
+  .filters label { color: #9fdfff; font-size: 13px; }
+
+  .export-btns {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .export-btn {
+    background: var(--accent);
+    border: none;
+    color: #000;
+    font-weight: 600;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  .export-btn:hover { background: #4eff9a; }
+
+  /* --- Resumo numérico --- */
+  .resumo-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+  }
+
+  .resumo-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    color: #fff;
+    box-shadow: 0 0 8px rgba(0,200,255,0.15);
+    transition: transform 0.3s;
+  }
+
+  .resumo-card:hover {
+    transform: scale(1.03);
+    box-shadow: 0 0 12px rgba(0,200,255,0.25);
+  }
+
+  .resumo-card h3 {
+    font-size: 26px;
+    color: #4eff9a;
+    margin: 5px 0;
+  }
+
+  .resumo-card p {
+    font-size: 13px;
+    color: #ccc;
+    margin: 0;
+  }
+
+  /* --- Gráficos --- */
+  section.card {
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 25px;
+    box-shadow: 0 0 8px rgba(0,200,255,0.1);
+    transition: box-shadow 0.3s;
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  section.card:hover {
+    box-shadow: 0 0 12px rgba(0,200,255,0.25);
+  }
+
+  section.card h3 {
+    font-size: 16px;
+    color: #9fdfff;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  canvas {
+    width: 100% !important;
+    max-width: 900px;
+    height: auto !important;
+    margin: 0 auto;
+    display: block;
+  }
+
+  #rankingLojas {
+    text-align: left;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .ranking-item {
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    padding: 10px;
+    margin: 6px 0;
+    transition: 0.3s;
+  }
+
+  .ranking-item:hover {
+    background: rgba(78,255,154,0.15);
+  }
+
+  /* --- Responsividade --- */
+  @media (max-width: 768px) {
+    section.card { padding: 15px; }
+    canvas { max-width: 50%; }
+    .resumo-card h3 { font-size: 22px; }
+    .resumo-card p { font-size: 12px; }
+  }
+
+  @media (min-width: 1400px) {
+    section.card {
+      max-width: 650px;
+    }
+  }
+</style>
+
 </head>
 
 <body>
@@ -129,7 +243,7 @@
 
     <!-- 🧭 EXPORTAÇÕES -->
     <div class="export-btns">
-      <button class="export-btn" id="exportPDF">📄 Exportar PDF</button>
+      <button class="export-btn" id="exportPDF">📄 Exportar Print</button>
       <button class="export-btn" id="exportExcel">📊 Exportar Excel</button>
     </div>
 
@@ -354,7 +468,43 @@ function criarRanking(dados) {
 
 
 // ===== EXPORTAÇÕES =====
-document.getElementById("exportPDF").onclick=async()=>{const{jsPDF}=window.jspdf;const pdf=new jsPDF("p","pt","a4");const content=document.getElementById("relatoriosContent");const canvas=await html2canvas(content,{scale:2});const img=canvas.toDataURL("image/png");const w=pdf.internal.pageSize.getWidth();const h=(canvas.height*w)/canvas.width;pdf.addImage(img,"PNG",20,20,w-40,h);pdf.save(`Relatorio_ValiTec_${new Date().toLocaleDateString()}.pdf`);}
+// ===== EXPORTAÇÃO PDF OTIMIZADA =====
+document.getElementById("exportPDF").onclick = async () => {
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF("p", "pt", "a4");
+    const content = document.getElementById("relatoriosContent");
+
+    // 🧠 Otimização para canvases complexos
+    const canvas = await html2canvas(content, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#0a0f1f",
+      logging: false,
+      onclone: (doc) => {
+        // Aplica o atributo willReadFrequently em todos os canvases
+        doc.querySelectorAll("canvas").forEach(cnv => {
+          const ctx = cnv.getContext("2d", { willReadFrequently: true });
+          if (ctx) {
+            // apenas força o navegador a entender o uso frequente
+          }
+        });
+      }
+    });
+
+    // 🖼 Converte para imagem e adiciona ao PDF
+    const img = canvas.toDataURL("image/png", 1.0);
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = (canvas.height * pageWidth) / canvas.width;
+
+    pdf.addImage(img, "PNG", 20, 20, pageWidth - 40, pageHeight);
+    pdf.save(`Relatorio_ValiTec_${new Date().toLocaleDateString()}.pdf`);
+
+  } catch (error) {
+    console.error("Erro ao gerar PDF:", error);
+    alert("❌ Ocorreu um erro ao exportar o PDF.");
+  }
+};
 document.getElementById("exportExcel").onclick=()=>{if(!dadosGlobais.length)return alert("Carregando...");const rows=[["Loja","Total","Rebaixados","Eficiência (%)"]];dadosGlobais.forEach(x=>rows.push([x.nome,x.total,x.rebaixados,x.eficiencia]));const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Relatório");XLSX.writeFile(wb,`Relatorio_ValiTec_${new Date().toLocaleDateString()}.xlsx`);}
 </script>
 
