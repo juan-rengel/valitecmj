@@ -27,28 +27,6 @@
       </nav>
     </aside>
 
-    <section class="comparativo-container">
-  <h2>Comparativo entre Lojas</h2>
-
-  <canvas id="graficoComparativo" height="120"></canvas>
-
-  <div class="tabela-comparativo">
-    <table>
-      <thead>
-        <tr>
-          <th>Loja</th>
-          <th>Total de Produtos</th>
-          <th>Rebaixados</th>
-          <th>Em Validade</th>
-        </tr>
-      </thead>
-      <tbody id="tabelaLojas"></tbody>
-    </table>
-  </div>
-</section>
-
-
-
    <main class="main">
 
   <h2 style="text-align:center; margin-bottom: 15px;">Panel de Indicadores</h2>
@@ -79,10 +57,11 @@
     <div style="background:rgba(15,25,45,0.96); border:1px solid var(--accent);
                 padding:20px; border-radius:12px; width:360px; max-width:90vw;">
       <h3 style="text-align:center;margin-bottom:12px;">Resumo por Setor</h3>
-      <canvas id="graficoSetores" style="max-width:100%;"></canvas>
+      <canvas id="graficoSetoresModal" style="max-width:100%;"></canvas>
       <button id="fecharSetor" style="margin-top:15px;width:100%;padding:10px;
               border:none;border-radius:10px;background:var(--accent);
-              color:#000;font-weight:700;cursor:pointer;">Fechar</button>
+              color:#000;font-weight:700;cursor:pointe">Fechar</button>
+          
     </div>
   </div>
 
@@ -132,8 +111,7 @@ document.querySelectorAll('.card .icon').forEach(el=>{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
@@ -146,15 +124,9 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const auth = getAuth(app);
 
-const cardPerto = document.querySelectorAll('.number')[0];
-const cardHoje  = document.querySelectorAll('.number')[1];
-const cardVencidos = document.querySelectorAll('.number')[2];
-const cardTotal = document.querySelectorAll('.number')[3];
-const cardSetor = document.querySelectorAll('.number')[4];
-
-const lojasLista = [
+// lista de lojas — ajuste caso tenha mais/menos
+const lojas = [
   "loja_cd_cidade",
   "loja_cidade",
   "loja_terranova",
@@ -164,125 +136,91 @@ const lojasLista = [
   "loja_mosaico"
 ];
 
-let lojaAtual = null;
-
-async function carregarDashboard() {
-  const user = auth.currentUser;
-  if (!user) return;
-
-  const userRef = doc(db, "usuarios", user.email);
-  const snap = await getDoc(userRef);
-  const cargo = snap.data().cargo;
-  const loja = snap.data().loja;
-
-  // Se for gerente → só carrega a própria loja
-  if (cargo !== "master") {
-    lojaAtual = loja;
-    document.getElementById("selectLoja")?.remove();
-  } else {
-    // Se for MASTER → libera seleção
-    document.getElementById("seletorLoja").style.display = "block";
-    const select = document.getElementById("selectLoja");
-    lojasLista.forEach(l => {
-      const opt = document.createElement("option");
-      opt.value = l;
-      opt.textContent = l;
-      select.appendChild(opt);
-    });
-    select.onchange = () => { lojaAtual = select.value; atualizar() };
-    lojaAtual = lojasLista[0];
+async function gerarRanking() {
+  const container = document.getElementById("rankingLojas");
+  if (!container) {
+    console.warn("rankingLojas element not found in DOM.");
+    return;
   }
 
-  atualizar();
-}
+  container.innerHTML = "<div style='opacity:.6'>Carregando ranking...</div>";
 
-// Atualiza dados
-async function atualizar() {
-  const ref = collection(db, `lojas/${lojaAtual}/produtos`);
-  const snap = await getDocs(ref);
+  try {
+    const resultados = [];
 
-  let total = 0;
-  let hojeVence = 0;
-  let vencidos = 0;
-  let perto = 0;
-
-  const hoje = new Date();
-
-  snap.forEach(d => {
-    const p = d.data();
-    total++;
-    const validade = new Date(p.dataValidadeISO);
-    const diff = Math.ceil((validade - hoje) / (1000*60*60*24));
-
-    if (diff < 0) vencidos++;
-    else if (diff === 0) hojeVence++;
-    else if (diff <= 7) perto++;
-  });
-
-  cardPerto.textContent = perto;
-  cardHoje.textContent = hojeVence;
-  cardVencidos.textContent = vencidos;
-  cardTotal.textContent = total;
-  cardSetor.textContent = "-"; // Próximo passo → gráfico por setor
-}
-
-onAuthStateChanged(auth, carregarDashboard);
-let graficoSetores;
-
-async function abrirResumoSetor() {
-  const ref = collection(db, `lojas/${lojaAtual}/produtos`);
-  const snap = await getDocs(ref);
-
-  const contagem = {
-    Mercearia: 0, Bebidas: 0, Frios: 0,
-    Higiene: 0, Limpeza: 0, Açougue: 0
-  };
-
-  snap.forEach(d => {
-    const p = d.data();
-    if (contagem[p.setor] !== undefined) contagem[p.setor]++;
-  });
-
-  const ctx = document.getElementById("graficoSetores");
-
-  if (graficoSetores) graficoSetores.destroy();
-
-  graficoSetores = new Chart(ctx, {
-    type: "pie",
-    data: {
-      labels: Object.keys(contagem),
-      datasets: [{
-        data: Object.values(contagem),
-        borderWidth: 3,
-        borderColor: "#00eaff",
-        backgroundColor: [
-          "rgba(0,200,255,0.7)",
-          "rgba(0,255,180,0.7)",
-          "rgba(255,200,0,0.7)",
-          "rgba(255,100,100,0.7)",
-          "rgba(150,100,255,0.7)",
-          "rgba(255,150,0,0.7)"
-        ],
-        hoverOffset: 10,
-      }]
-    },
-    options: {
-      plugins: {
-        legend: {
-          labels: { color: "white", font: { size: 14 } }
-        }
-      }
+    for (const loja of lojas) {
+      const snap = await getDocs(collection(db, `lojas/${loja}/produtos`));
+      let total = 0, rebaixados = 0;
+      snap.forEach(d => {
+        const p = d.data();
+        total++;
+        if (p.status === "rebaixado") rebaixados++;
+      });
+      const eficiencia = total > 0 ? Number((((total - rebaixados) / total) * 100).toFixed(1)) : 0;
+      resultados.push({ loja, total, rebaixados, eficiencia });
     }
-  });
 
-  document.getElementById("modalSetor").classList.remove("hidden");
+    // ordenar por eficiência decrescente
+    resultados.sort((a, b) => b.eficiencia - a.eficiencia);
+
+    // limpar container
+    container.innerHTML = "";
+
+    resultados.forEach((r, index) => {
+      const item = document.createElement("div");
+      item.className = "ranking-item";
+
+      const lojaNome = r.loja.replace("loja_", "").replaceAll("_", " ").toUpperCase();
+
+      // cor para top 3
+      let cor = "#4eff9a";
+      if (index === 0) cor = "#ffd700"; // ouro
+      else if (index === 1) cor = "#c0c0c0"; // prata
+      else if (index === 2) cor = "#cd7f32"; // bronze
+
+      item.innerHTML = `
+        <div style="z-index:2; display:flex; width:100%; gap:12px; align-items:center;">
+          <div style="width:36px; font-weight:700;">${index+1}º</div>
+          <div style="min-width:180px; font-weight:700;">${lojaNome}</div>
+          <div style="flex:1; color:#dff6ff;">${r.eficiencia}% eficiência</div>
+          <div style="min-width:180px; text-align:right; color:rgba(255,255,255,0.8);">
+            ${r.total - r.rebaixados}/${r.total} válidos
+          </div>
+        </div>
+      `;
+
+      const barra = document.createElement("div");
+      barra.className = "ranking-barra";
+      barra.style.background = cor;
+      barra.style.width = "0%";
+      barra.style.height = "100%";
+      barra.style.position = "absolute";
+      barra.style.left = "0";
+      barra.style.top = "0";
+      barra.style.borderRadius = "10px";
+      barra.style.opacity = "0.12";
+
+      item.appendChild(barra);
+      container.appendChild(item);
+
+      // anima a barra (pequeno delay para efeito)
+      setTimeout(() => {
+        barra.style.width = `${r.eficiencia}%`;
+        barra.style.transition = "width 900ms ease";
+        barra.style.opacity = "0.35";
+      }, 80 + index * 80);
+    });
+
+  } catch (err) {
+    console.error("Erro ao gerar ranking:", err);
+    container.innerHTML = "<div class='produto-card'>Erro ao carregar ranking. Veja o console.</div>";
+  }
 }
 
-document.querySelectorAll('.card')[4].onclick = abrirResumoSetor;
-document.getElementById("fecharSetor").onclick = () => {
-  document.getElementById("modalSetor").classList.add("hidden");
-};
+// chama quando a página iniciar
+document.addEventListener("DOMContentLoaded", gerarRanking);
 </script>
+
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <button id="toggleTheme" class="theme-toggle">🌙</button>

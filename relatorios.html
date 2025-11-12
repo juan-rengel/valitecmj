@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ValiTec MJ — Relatórios Executivos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dashboard.css">
+
+  <!-- Bibliotecas -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    .filters {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      margin-bottom: 20px; align-items: center;
+    }
+    .filters select, .filters input {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      color: #fff; padding: 8px 12px; font-size: 14px; outline: none;
+    }
+    .filters label { color: #9fdfff; font-size: 13px; }
+
+    .export-btns { display: flex; gap: 12px; justify-content: flex-end; margin-bottom: 20px; }
+    .export-btn {
+      background: var(--accent, #00c8ff);
+      border: none; color: #000; font-weight: 600;
+      padding: 10px 16px; border-radius: 8px; cursor: pointer; transition: 0.3s;
+    }
+    .export-btn:hover { background: #4eff9a; }
+
+    /* Cards de resumo */
+    .resumo-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .resumo-card {
+      background: rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+      color: #fff;
+      box-shadow: 0 0 8px rgba(0,200,255,0.15);
+    }
+    .resumo-card h3 {
+      font-size: 28px; color: #4eff9a; margin: 5px 0;
+    }
+    .resumo-card p { font-size: 13px; color: #ccc; margin: 0; }
+
+    .ranking-item { margin: 6px 0; font-size: 14px; }
+  </style>
+</head>
+
+<body>
+<canvas id="particleCanvas"></canvas>
+
+<div class="app-container">
+  <aside class="sidebar">
+    <h1>ValiTec MJ</h1>
+    <nav>
+      <a href="dashboard.html">Painel</a>
+      <a href="produto.html">Cadastrar Produtos</a>
+      <a href="Lista-produtos.html">Lista de Produtos</a>
+      <a href="Lista-rebaixados.html">Produtos Rebaixados</a>
+      <a href="calendario.html">Calendário</a>
+      <a href="perfil.html">Perfil</a>
+      <a href="cadastro-usuarios.html">Usuários</a>
+      <a href="#" class="active">Relatórios</a>
+      <a href="#" onclick="localStorage.clear(); location.href='index.html'">Sair</a>
+    </nav>
+  </aside>
+
+  <main class="main fade-in" id="relatoriosContent">
+    <h2 class="page-title">📊 Relatórios Executivos</h2>
+
+    <!-- 🔍 FILTROS -->
+    <div class="filters">
+      <label>Loja:
+        <select id="filtroLoja">
+          <option value="todas">Todas</option>
+          <option value="loja_cd_cidade">CD Cidade</option>
+          <option value="loja_cidade">Nova Cidade</option>
+          <option value="loja_terranova">Terra Nova</option>
+          <option value="loja_manoa">Manoa</option>
+          <option value="loja_zumbi">Zumbi</option>
+          <option value="loja_oswaldo">Oswaldo Frota</option>
+          <option value="loja_mosaico">Mosaico</option>
+        </select>
+      </label>
+
+      <label>Setor:
+        <input type="text" id="filtroSetor" placeholder="Ex: Frios, Mercearia...">
+      </label>
+
+      <label>Período:
+        <input type="date" id="dataInicio"> —
+        <input type="date" id="dataFim">
+      </label>
+
+      <button class="export-btn" id="btnFiltrar">🔎 Aplicar Filtro</button>
+    </div>
+
+    <!-- 📈 RESUMO EXECUTIVO -->
+    <div class="resumo-container">
+      <div class="resumo-card">
+        <h3 id="resumoTotal">0</h3>
+        <p>Total de Produtos</p>
+      </div>
+      <div class="resumo-card">
+        <h3 id="resumoRebaixados">0</h3>
+        <p>Total de Rebaixados</p>
+      </div>
+      <div class="resumo-card">
+        <h3 id="resumoEficiencia">0%</h3>
+        <p>Média de Eficiência</p>
+      </div>
+      <div class="resumo-card">
+        <h3 id="resumoLojas">0</h3>
+        <p>Lojas Incluídas</p>
+      </div>
+    </div>
+
+    <!-- 🧭 EXPORTAÇÕES -->
+    <div class="export-btns">
+      <button class="export-btn" id="exportPDF">📄 Exportar PDF</button>
+      <button class="export-btn" id="exportExcel">📊 Exportar Excel</button>
+    </div>
+
+    <!-- ======== GRÁFICOS ======== -->
+    <section class="card">
+      <h3>🏪 Comparativo entre Lojas</h3>
+      <canvas id="graficoComparativo" height="150"></canvas>
+    </section>
+
+    <section class="card">
+      <h3>📈 Eficiência (Válidos x Rebaixados)</h3>
+      <canvas id="graficoEficiencia" height="150"></canvas>
+    </section>
+
+    <section class="card">
+      <h3>🍕 Rebaixamentos por Setor</h3>
+      <canvas id="graficoSetores" height="180"></canvas>
+    </section>
+
+    <section class="card">
+      <h3>🏆 Ranking de Desempenho</h3>
+      <div id="rankingLojas"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ======= SCRIPTS ======= -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
+  authDomain: "valitec-mj.firebaseapp.com",
+  projectId: "valitec-mj",
+  storageBucket: "valitec-mj.firebasestorage.app",
+  messagingSenderId: "616592039657",
+  appId: "1:616592039657:web:3827a890474111be85da78"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+const lojas = [
+  "loja_cd_cidade","loja_cidade","loja_terranova","loja_manoa","loja_zumbi","loja_oswaldo","loja_mosaico"
+];
+
+let dadosGlobais = [];
+
+onAuthStateChanged(auth, async (user) => {
+  if (user) gerarRelatorios();
+});
+
+document.getElementById("btnFiltrar").addEventListener("click", gerarRelatorios);
+
+async function gerarRelatorios() {
+  const lojaFiltro = document.getElementById("filtroLoja").value;
+  const setorFiltro = document.getElementById("filtroSetor").value.trim().toLowerCase();
+  const dataIni = document.getElementById("dataInicio").value;
+  const dataFim = document.getElementById("dataFim").value;
+
+  const resultados = [];
+  const lojasParaBuscar = lojaFiltro === "todas" ? lojas : [lojaFiltro];
+
+  for (const loja of lojasParaBuscar) {
+    const snap = await getDocs(collection(db, `lojas/${loja}/produtos`));
+    let total = 0, rebaixados = 0;
+    const setores = {};
+
+    snap.forEach(d => {
+      const p = d.data();
+      if (!p.dataValidadeISO) return;
+      if (dataIni && new Date(p.dataValidadeISO) < new Date(dataIni)) return;
+      if (dataFim && new Date(p.dataValidadeISO) > new Date(dataFim)) return;
+      if (setorFiltro && !p.setor?.toLowerCase().includes(setorFiltro)) return;
+      total++;
+      if (p.status === "rebaixado") rebaixados++;
+      setores[p.setor] = (setores[p.setor] || 0) + 1;
+    });
+
+    resultados.push({
+      nome: loja.replace("loja_", "").replaceAll("_", " ").toUpperCase(),
+      total, rebaixados,
+      eficiencia: total ? ((total - rebaixados) / total * 100).toFixed(1) : 0,
+      setores
+    });
+  }
+
+  dadosGlobais = resultados;
+  atualizarResumo(resultados);
+  criarGraficoComparativo(resultados);
+  criarGraficoEficiencia(resultados);
+  criarGraficoSetores(resultados);
+  criarRanking(resultados);
+}
+
+// 🧾 Atualiza os números do resumo
+function atualizarResumo(dados) {
+  const total = dados.reduce((a,b)=>a+b.total,0);
+  const rebaix = dados.reduce((a,b)=>a+b.rebaixados,0);
+  const media = dados.length ? (dados.reduce((a,b)=>a+parseFloat(b.eficiencia),0)/dados.length).toFixed(1) : 0;
+
+  document.getElementById("resumoTotal").textContent = total;
+  document.getElementById("resumoRebaixados").textContent = rebaix;
+  document.getElementById("resumoEficiencia").textContent = `${media}%`;
+  document.getElementById("resumoLojas").textContent = dados.length;
+}
+
+// ===== GRÁFICOS =====
+function criarGraficoComparativo(d){const c=document.getElementById("graficoComparativo").getContext("2d");new Chart(c,{type:"bar",data:{labels:d.map(x=>x.nome),datasets:[{label:"Produtos Totais",data:d.map(x=>x.total),backgroundColor:"rgba(0,200,255,0.6)"}]}});}
+function criarGraficoEficiencia(d){const c=document.getElementById("graficoEficiencia").getContext("2d");new Chart(c,{type:"radar",data:{labels:d.map(x=>x.nome),datasets:[{label:"Eficiência (%)",data:d.map(x=>x.eficiencia),borderColor:"#4eff9a",backgroundColor:"rgba(78,255,154,0.2)"}]}});}
+function criarGraficoSetores(d){const c=document.getElementById("graficoSetores").getContext("2d");const all={};d.forEach(x=>Object.entries(x.setores).forEach(([s,q])=>all[s]=(all[s]||0)+q));new Chart(c,{type:"pie",data:{labels:Object.keys(all),datasets:[{data:Object.values(all),backgroundColor:["#4eff9a","#00c8ff","#ffe66d","#ff9f43","#ff4d4d","#b86bff"]}]}});}
+function criarRanking(d){const c=document.getElementById("rankingLojas");c.innerHTML="";d.sort((a,b)=>b.eficiencia-a.eficiencia);d.forEach((x,i)=>{const cor=i==0?"#ffd700":i==1?"#c0c0c0":i==2?"#cd7f32":"#4eff9a";c.innerHTML+=`<div class='ranking-item'><strong>${i+1}º</strong> ${x.nome} — <span style='color:${cor}'>${x.eficiencia}%</span> (${x.total-x.rebaixados}/${x.total})</div>`});}
+
+// ===== EXPORTAÇÕES =====
+document.getElementById("exportPDF").onclick=async()=>{const{jsPDF}=window.jspdf;const pdf=new jsPDF("p","pt","a4");const content=document.getElementById("relatoriosContent");const canvas=await html2canvas(content,{scale:2});const img=canvas.toDataURL("image/png");const w=pdf.internal.pageSize.getWidth();const h=(canvas.height*w)/canvas.width;pdf.addImage(img,"PNG",20,20,w-40,h);pdf.save(`Relatorio_ValiTec_${new Date().toLocaleDateString()}.pdf`);}
+document.getElementById("exportExcel").onclick=()=>{if(!dadosGlobais.length)return alert("Carregando...");const rows=[["Loja","Total","Rebaixados","Eficiência (%)"]];dadosGlobais.forEach(x=>rows.push([x.nome,x.total,x.rebaixados,x.eficiencia]));const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Relatório");XLSX.writeFile(wb,`Relatorio_ValiTec_${new Date().toLocaleDateString()}.xlsx`);}
+</script>
+
+<!-- Fundo animado -->
+<script>
+const c=document.getElementById("particleCanvas"),x=c.getContext("2d");let p=[];let w,h;
+function resize(){w=c.width=innerWidth;h=c.height=innerHeight;}addEventListener("resize",resize);resize();
+for(let i=0;i<60;i++){p.push({x:Math.random()*w,y:Math.random()*h,r:Math.random()*2+1,dx:(Math.random()-.5)*.4,dy:(Math.random()-.5)*.4});}
+function draw(){x.clearRect(0,0,w,h);x.fillStyle="rgba(0,200,255,.35)";p.forEach(a=>{x.beginPath();x.arc(a.x,a.y,a.r,0,Math.PI*2);x.fill();a.x+=a.dx;a.y+=a.dy;if(a.x<0||a.x>w)a.dx*=-1;if(a.y<0||a.y>h)a.dy*=-1;});requestAnimationFrame(draw);}draw();
+</script>
+</body>
+</html>
