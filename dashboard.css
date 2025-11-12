@@ -689,3 +689,56 @@ body, .main, .sidebar {
 .theme-toggle:hover {
   transform: scale(1.12);
 }
+
+
+.export-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.btnExport {
+  background: linear-gradient(90deg,#00bcd4,#0077ff);
+  border: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: .25s;
+ 
+}
+
+.btnExport:hover {
+  transform: scale(1.05);
+  filter: brightness(1.15);
+}
+.comparativo-container {
+  background: rgba(15, 25, 40, 0.85);
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 200, 255, 0.3);
+  box-shadow: 0 0 15px rgba(0,200,255,0.15);
+  margin-top: 25px;
+}
+
+.tabela-comparativo {
+  margin-top: 20px;
+  overflow-x: auto;
+}
+
+.tabela-comparativo table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #e2f6ff;
+  text-align: center;
+}
+
+.tabela-comparativo th, .tabela-comparativo td {
+  padding: 10px;
+  border-bottom: 1px solid rgba(0,200,255,0.2);
+}
+
+.tabela-comparativo tr:hover {
+  background: rgba(0,200,255,0.08);
+}

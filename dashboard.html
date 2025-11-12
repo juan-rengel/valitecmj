@@ -18,14 +18,35 @@
         <a href="produto.html">
             cadastrar produtos
         </a>
-        <a href="lista-produtos.html">Lista de produtos</a>
+        <a href="Lista-produtos.html">Lista de produtos</a>
         <a href="Lista-rebaixados.html">Produtos Rebaixados</a>
         <a href="calendario.html">Calendario</a>
         <a href="perfil.html">Perfil</a>
         <a href="cadastro-usuarios.html">Cadastrar Usuários</a>
         <a href="#" onclick="localStorage.clear(); location.href='index.html'">Sair</a>
       </nav>
-</aside>
+    </aside>
+
+    <section class="comparativo-container">
+  <h2>Comparativo entre Lojas</h2>
+
+  <canvas id="graficoComparativo" height="120"></canvas>
+
+  <div class="tabela-comparativo">
+    <table>
+      <thead>
+        <tr>
+          <th>Loja</th>
+          <th>Total de Produtos</th>
+          <th>Rebaixados</th>
+          <th>Em Validade</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaLojas"></tbody>
+    </table>
+  </div>
+</section>
+
 
 
    <main class="main">
@@ -288,5 +309,9 @@ toggle.onclick = () => {
 
 aplicarTema();
 </script>
+
+
+
+
 </body>
 </html>

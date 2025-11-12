@@ -6,6 +6,10 @@
   <title>ValiTec MJ — Lista de Produtos</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="dashboard.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.26/jspdf.plugin.autotable.min.js"></script>
+
 </head>
 <body>
   <canvas id="particleCanvas"></canvas>
@@ -28,21 +32,34 @@
     <main class="main fade-in">
       <h2 class="page-title">Lista de Produtos</h2>
 
-      <!-- Campo de busca -->
+     
+
       <input type="text" id="busca" class="input-busca" placeholder="🔍 Buscar por nome, setor ou código...">
 
+        <div class="export-container">
+      <button id="exportTela" class="btnExport">📄 Exportar Tela (PDF/Excel)</button>
+      <button id="exportTudo" class="btnExport">🗂 Exportar   Tudo    (PDF/Excel)</button>
+      </div>
       <!-- Lista -->
       <div id="listaProdutos" class="lista-produtos"></div>
+    
     </main>
   </div>
 
-  <script type="module">
+<script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getFirestore, collection, getDocs, getDoc, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
+  // === Bibliotecas para exportação ===
+  import "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+  import "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+  import "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.26/jspdf.plugin.autotable.min.js";
+
   let loja = null;
   let cargo = null;
+  let produtosCarregados = [];
+  let produtosCarregadosFiltrados = [];
 
   const firebaseConfig = {
     apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
@@ -56,8 +73,6 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   const auth = getAuth(app);
-
-  let produtosCarregados = [];
 
   async function carregarProdutos() {
     const user = auth.currentUser;
@@ -133,50 +148,37 @@
                   (diff <= 10) ? "#ff9f43" :
                   (diff <= 15) ? "#ffe66d" : "#4eff9a";
 
-// === Botão Rebaixar (avisa o gerente) ===
-const btnConfirm = document.createElement("button");
-btnConfirm.textContent = `✅ Rebaixar (${isNaN(diff) ? "-" : diff}d)`;
-btnConfirm.style.background = cor;
-btnConfirm.style.color = "#000";
-btnConfirm.style.padding = "8px 10px";
-btnConfirm.style.borderRadius = "6px";
-btnConfirm.style.fontWeight = "600";
-btnConfirm.style.cursor = "pointer";
+      // === Botão Rebaixar ===
+      const btnConfirm = document.createElement("button");
+      btnConfirm.textContent = `✅ Rebaixar (${isNaN(diff) ? "-" : diff}d)`;
+      btnConfirm.style.background = cor;
+      btnConfirm.style.color = "#000";
+      btnConfirm.style.padding = "8px 10px";
+      btnConfirm.style.borderRadius = "6px";
+      btnConfirm.style.fontWeight = "600";
+      btnConfirm.style.cursor = "pointer";
 
-btnConfirm.onclick = async () => {
-  try {
-    // Atualiza status do produto
-    await updateDoc(doc(db, `lojas/${loja}/produtos/${p.id}`), {
-      status: "rebaixado"
-    });
+      btnConfirm.onclick = async () => {
+        try {
+          await updateDoc(doc(db, `lojas/${loja}/produtos/${p.id}`), { status: "rebaixado" });
 
-    // ✅ Busca WhatsApp salvo corretamente
-    const confSnap = await getDoc(doc(db, `lojas/${loja}/config/geral`));
-    const gerenteWhats = confSnap.exists() ? confSnap.data().whatsGerente : null;
+          const confSnap = await getDoc(doc(db, `lojas/${loja}/config/geral`));
+          const gerenteWhats = confSnap.exists() ? confSnap.data().whatsGerente : null;
 
-    if (gerenteWhats) {
-      const msg = `
-📉 *PRODUTO REBAIXADO*
+          if (gerenteWhats) {
+            const msg = `📉 *PRODUTO REBAIXADO*\n\n📦 *${p.nome}*\n🏷️ Setor: ${p.setor}\n🔖 Lote: ${p.lote}\n📅 Validade: ${p.dataValidadeBR}`;
+            window.open(`https://wa.me/55${gerenteWhats}?text=${encodeURIComponent(msg)}`);
+          }
 
-📦 *${p.nome}*
-🏷️ Setor: ${p.setor}
-🔖 Lote: ${p.lote}
-📅 Validade: ${p.dataValidadeBR}
-      `;
-      window.open(`https://wa.me/55${gerenteWhats}?text=${encodeURIComponent(msg)}`);
-    }
+          carregarProdutos();
+        } catch (e) {
+          alert("❌ Erro ao rebaixar o produto.");
+          console.error(e);
+        }
+      };
+      item.appendChild(btnConfirm);
 
-    carregarProdutos();
-  } catch (e) {
-    alert("❌ Erro ao rebaixar o produto.");
-    console.error(e);
-  }
-};
-
-item.appendChild(btnConfirm);
-
-
-      // ✅ Se NÃO for responsável → pode EDITAR e EXCLUIR
+      // === Editar / Excluir (para gerente ou auxiliar) ===
       if (cargo !== "responsavel") {
         const btnEditar = document.createElement("button");
         btnEditar.textContent = "✏️ Editar";
@@ -206,18 +208,60 @@ item.appendChild(btnConfirm);
     });
   }
 
-  // 🔍 Busca Instantânea
+  // ===== FILTRO DE BUSCA =====
   document.getElementById("busca").addEventListener("input", e => {
     const termo = e.target.value.toLowerCase();
-    exibirLista(produtosCarregados.filter(p =>
+    produtosCarregadosFiltrados = produtosCarregados.filter(p =>
       (p.nome || "").toLowerCase().includes(termo) ||
       (p.setor || "").toLowerCase().includes(termo) ||
       (p.codigo || "").toLowerCase().includes(termo)
-    ));
+    );
+    exibirLista(produtosCarregadosFiltrados);
   });
 
+  // ===== EXPORTAR TELA OU TODOS =====
+  document.getElementById("exportTela").onclick = () => {
+    exportar(produtosCarregadosFiltrados.length ? produtosCarregadosFiltrados : produtosCarregados);
+  };
+
+  document.getElementById("exportTudo").onclick = async () => {
+    const ref = collection(db, `lojas/${loja}/produtos`);
+    const snap = await getDocs(ref);
+    const todos = [];
+    snap.forEach(d => todos.push({ id: d.id, ...d.data() }));
+    exportar(todos);
+  };
+
+  // ===== FUNÇÃO DE EXPORTAÇÃO =====
+  function exportar(lista) {
+    if (!lista.length) return alert("Nenhum produto para exportar.");
+
+    // --- Excel ---
+    const ws = XLSX.utils.json_to_sheet(lista.map(p => ({
+      Nome: p.nome,
+      Lote: p.lote,
+      Setor: p.setor,
+      Validade: p.dataValidadeBR
+    })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Produtos");
+    XLSX.writeFile(wb, "produtos_valitec.xlsx");
+
+    // --- PDF ---
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+    pdf.text("Lista de Produtos - ValiTec MJ", 14, 12);
+    pdf.autoTable({
+      startY: 18,
+      head: [["Nome", "Setor", "Lote", "Validade"]],
+      body: lista.map(p => [p.nome, p.setor, p.lote, p.dataValidadeBR])
+    });
+    pdf.save("produtos_valitec.pdf");
+  }
+
   onAuthStateChanged(auth, carregarProdutos);
-  </script>
+</script>
+
 
   <script>
   // Partículas
