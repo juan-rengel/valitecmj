@@ -7,249 +7,206 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="dashboard.css">
 </head>
+
 <body>
   <canvas id="particleCanvas"></canvas>
 
   <div class="app-container">
     <aside class="sidebar">
-    
-   <nav>
+      <nav>
         <a href="#" class="active">Painel</a>
-        <a href="produto.html">
-            cadastrar produtos
-        </a>
-        <a href="Lista-produtos.html">Lista de produtos</a>
+        <a href="produto.html">Cadastrar Produtos</a>
+        <a href="Lista-produtos.html">Lista de Produtos</a>
         <a href="Lista-rebaixados.html">Produtos Rebaixados</a>
-        <a href="calendario.html">Calendario</a>
+        <a href="calendario.html">Calendário</a>
         <a href="perfil.html">Perfil</a>
         <a href="cadastro-usuarios.html">Cadastrar Usuários</a>
         <a href="#" onclick="localStorage.clear(); location.href='index.html'">Sair</a>
       </nav>
     </aside>
 
-   <main class="main">
+    <main class="main">
+      <h2 style="text-align:center; margin-bottom: 15px;">Painel de Indicadores</h2>
 
-  <h2 style="text-align:center; margin-bottom: 15px;">Panel de Indicadores</h2>
-
-  <!-- Seleção de Loja (apenas master) -->
-  <div id="seletorLoja" style="display:none; margin:10px 0;">
-    <label style="color:#7deaff;">Selecionar Loja:</label>
-    <select id="selectLoja"></select>
+      <!-- Cards -->
+      <div class="cards">
+        <div class="card"><span class="icon">⏳</span><span class="number" id="pertoVencer">0</span><span class="label">Perto de Vencer</span></div>
+        <div class="card"><span class="icon">📅</span><span class="number" id="vencendoHoje">0</span><span class="label">Vencendo Hoje</span></div>
+        <div class="card"><span class="icon">⚠️</span><span class="number" id="vencidos">0</span><span class="label">Vencidos</span></div>
+        <div class="card"><span class="icon">📦</span><span class="number" id="totalProdutos">0</span><span class="label">Total de Produtos</span></div>
+        <div class="card resumo-card" id="abrirSetor"><span class="icon">🏷️</span><span class="number">+</span><span class="label">Resumo por Setor</span></div>
+      </div>
+    </main>
   </div>
 
-  <!-- Cards -->
-  <div class="cards">
-    <div class="card"><span class="icon">⏳</span><span class="number">0</span><span class="label">Perto de Vencer</span></div>
-    <div class="card"><span class="icon">📅</span><span class="number">0</span><span class="label">Vencendo Hoje</span></div>
-    <div class="card"><span class="icon">⚠️</span><span class="number">0</span><span class="label">Vencidos</span></div>
-    <div class="card"><span class="icon">📦</span><span class="number">0</span><span class="label">Total de Produtos</span></div>
-    <div class="card resumo-card"><span class="icon">🏷️</span><span class="number">0</span><span class="label">Resumo por Setor</span></div>
-  </div>
-
-</main>
-  </div>
-
- <!-- Modal do Resumo por Setor (fora do app-container para não bloquear layout) -->
-  <div id="modalSetor" class="modal hidden" style="
-    position: fixed; inset: 0;
-    display: none; align-items: center; justify-content: center;
-    backdrop-filter: blur(6px); background: rgba(0,0,0,0.55); z-index: 9999;">
+  <!-- Modal Resumo por Setor -->
+  <div id="modalSetor" class="modal" style="display:none;">
     <div style="background:rgba(15,25,45,0.96); border:1px solid var(--accent);
                 padding:20px; border-radius:12px; width:360px; max-width:90vw;">
       <h3 style="text-align:center;margin-bottom:12px;">Resumo por Setor</h3>
       <canvas id="graficoSetoresModal" style="max-width:100%;"></canvas>
       <button id="fecharSetor" style="margin-top:15px;width:100%;padding:10px;
               border:none;border-radius:10px;background:var(--accent);
-              color:#000;font-weight:700;cursor:pointe">Fechar</button>
-          
+              color:#000;font-weight:700;cursor:pointer;">Fechar</button>
     </div>
   </div>
 
-<script>
-// --- Menu Hambúrguer ---
-const sidebar = document.querySelector('.sidebar');
-const hamburger = document.createElement('button');
-hamburger.className = 'hamburger';
-hamburger.textContent = '☰';
-hamburger.onclick = () => sidebar.classList.toggle('open');
-document.body.appendChild(hamburger);
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-// --- Partículas de Fundo ---
-const canvas = document.getElementById('particleCanvas');
-if(canvas){
-  const ctx = canvas.getContext('2d');
-  function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
-  window.addEventListener('resize', resize); resize();
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-  const particles = Array.from({length: 60}, () => ({
-    x: Math.random()*canvas.width,
-    y: Math.random()*canvas.height,
-    r: Math.random()*2+1,
-    sx: (Math.random()-0.5)*0.6,
-    sy: (Math.random()-0.5)*0.6
-  }));
+  const firebaseConfig = {
+    apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
+    authDomain: "valitec-mj.firebaseapp.com",
+    projectId: "valitec-mj",
+    storageBucket: "valitec-mj.firebasestorage.app",
+    messagingSenderId: "616592039657",
+    appId: "1:616592039657:web:3827a890474111be85da78"
+  };
 
-  function animate(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    particles.forEach(p=>{
-      p.x+=p.sx; p.y+=p.sy;
-      if(p.x<0)p.x=canvas.width; if(p.x>canvas.width)p.x=0;
-      if(p.y<0)p.y=canvas.height; if(p.y>canvas.height)p.y=0;
-      ctx.fillStyle='rgba(255,255,255,0.07)';
-      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  let lojaAtual = null;
+  let graficoSetor = null;
+
+  // === Carregar loja do usuário logado ===
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) return;
+    const snap = await getDoc(doc(db, "usuarios", user.email));
+    if (!snap.exists()) return;
+    lojaAtual = snap.data().loja;
+
+    carregarIndicadores();
+  });
+
+  // === Indicadores principais ===
+  async function carregarIndicadores() {
+    if (!lojaAtual) return;
+    const ref = collection(db, `lojas/${lojaAtual}/produtos`);
+    const snap = await getDocs(ref);
+
+    let total = 0, vencidos = 0, vencendoHoje = 0, pertoVencer = 0;
+    const hoje = new Date();
+    snap.forEach(docItem => {
+      const p = docItem.data();
+      if (!p.dataValidadeISO) return;
+      total++;
+      const validade = new Date(p.dataValidadeISO);
+      const diff = Math.ceil((validade - hoje) / (1000 * 60 * 60 * 24));
+
+      if (diff < 0) vencidos++;
+      else if (diff === 0) vencendoHoje++;
+      else if (diff <= 5) pertoVencer++;
     });
-    requestAnimationFrame(animate);
-  }
-  animate();
-}
 
-// --- Ícones Neon Personalizados ---
-document.querySelectorAll('.card .icon').forEach(el=>{
-  el.style.filter = 'drop-shadow(0 0 8px rgba(0,119,255,0.8))';
-});
-</script>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
-  authDomain: "valitec-mj.firebaseapp.com",
-  projectId: "valitec-mj",
-  storageBucket: "valitec-mj.firebasestorage.app",
-  messagingSenderId: "616592039657",
-  appId: "1:616592039657:web:3827a890474111be85da78"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// lista de lojas — ajuste caso tenha mais/menos
-const lojas = [
-  "loja_cd_cidade",
-  "loja_cidade",
-  "loja_terranova",
-  "loja_manoa",
-  "loja_zumbi",
-  "loja_oswaldo",
-  "loja_mosaico"
-];
-
-async function gerarRanking() {
-  const container = document.getElementById("rankingLojas");
-  if (!container) {
-    console.warn("rankingLojas element not found in DOM.");
-    return;
+    document.getElementById("totalProdutos").textContent = total;
+    document.getElementById("vencidos").textContent = vencidos;
+    document.getElementById("vencendoHoje").textContent = vencendoHoje;
+    document.getElementById("pertoVencer").textContent = pertoVencer;
   }
 
-  container.innerHTML = "<div style='opacity:.6'>Carregando ranking...</div>";
+  // === Gráfico Resumo por Setor ===
+  async function abrirResumoSetor() {
+    if (!lojaAtual) return alert("Loja não identificada.");
+    const modal = document.getElementById("modalSetor");
+    modal.style.display = "flex";
 
-  try {
-    const resultados = [];
+    const ref = collection(db, `lojas/${lojaAtual}/produtos`);
+    const snap = await getDocs(ref);
 
-    for (const loja of lojas) {
-      const snap = await getDocs(collection(db, `lojas/${loja}/produtos`));
-      let total = 0, rebaixados = 0;
-      snap.forEach(d => {
-        const p = d.data();
-        total++;
-        if (p.status === "rebaixado") rebaixados++;
+    const setores = {};
+    snap.forEach(docItem => {
+      const p = docItem.data();
+      if (!p.setor) return;
+      setores[p.setor] = (setores[p.setor] || 0) + 1;
+    });
+
+    const ctx = document.getElementById("graficoSetoresModal").getContext("2d");
+    if (graficoSetor) graficoSetor.destroy();
+
+    graficoSetor = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(setores),
+        datasets: [{
+          data: Object.values(setores),
+          backgroundColor: ["#00C8FF","#4EFF9A","#FFD700","#FF6B6B","#9B5DE5","#F15BB5","#00BBF9"]
+        }]
+      },
+      options: {
+        plugins: { legend: { labels: { color: '#fff' } } }
+      }
+    });
+  }
+
+  document.getElementById("abrirSetor").addEventListener("click", abrirResumoSetor);
+  document.getElementById("fecharSetor").addEventListener("click", () => {
+    document.getElementById("modalSetor").style.display = "none";
+  });
+  </script>
+
+  <script>
+  // --- Menu Hambúrguer ---
+  const sidebar = document.querySelector('.sidebar');
+  const hamburger = document.createElement('button');
+  hamburger.className = 'hamburger';
+  hamburger.textContent = '☰';
+  hamburger.onclick = () => sidebar.classList.toggle('open');
+  document.body.appendChild(hamburger);
+
+  // --- Fundo de partículas ---
+  const canvas = document.getElementById('particleCanvas');
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
+    window.addEventListener('resize', resize); resize();
+    const particles = Array.from({length:60},()=>({
+      x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:Math.random()*2+1,
+      sx:(Math.random()-0.5)*0.6,sy:(Math.random()-0.5)*0.6
+    }));
+    function animate(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      particles.forEach(p=>{
+        p.x+=p.sx;p.y+=p.sy;
+        if(p.x<0)p.x=canvas.width;if(p.x>canvas.width)p.x=0;
+        if(p.y<0)p.y=canvas.height;if(p.y>canvas.height)p.y=0;
+        ctx.fillStyle='rgba(255,255,255,0.07)';
+        ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
       });
-      const eficiencia = total > 0 ? Number((((total - rebaixados) / total) * 100).toFixed(1)) : 0;
-      resultados.push({ loja, total, rebaixados, eficiencia });
+      requestAnimationFrame(animate);
     }
-
-    // ordenar por eficiência decrescente
-    resultados.sort((a, b) => b.eficiencia - a.eficiencia);
-
-    // limpar container
-    container.innerHTML = "";
-
-    resultados.forEach((r, index) => {
-      const item = document.createElement("div");
-      item.className = "ranking-item";
-
-      const lojaNome = r.loja.replace("loja_", "").replaceAll("_", " ").toUpperCase();
-
-      // cor para top 3
-      let cor = "#4eff9a";
-      if (index === 0) cor = "#ffd700"; // ouro
-      else if (index === 1) cor = "#c0c0c0"; // prata
-      else if (index === 2) cor = "#cd7f32"; // bronze
-
-      item.innerHTML = `
-        <div style="z-index:2; display:flex; width:100%; gap:12px; align-items:center;">
-          <div style="width:36px; font-weight:700;">${index+1}º</div>
-          <div style="min-width:180px; font-weight:700;">${lojaNome}</div>
-          <div style="flex:1; color:#dff6ff;">${r.eficiencia}% eficiência</div>
-          <div style="min-width:180px; text-align:right; color:rgba(255,255,255,0.8);">
-            ${r.total - r.rebaixados}/${r.total} válidos
-          </div>
-        </div>
-      `;
-
-      const barra = document.createElement("div");
-      barra.className = "ranking-barra";
-      barra.style.background = cor;
-      barra.style.width = "0%";
-      barra.style.height = "100%";
-      barra.style.position = "absolute";
-      barra.style.left = "0";
-      barra.style.top = "0";
-      barra.style.borderRadius = "10px";
-      barra.style.opacity = "0.12";
-
-      item.appendChild(barra);
-      container.appendChild(item);
-
-      // anima a barra (pequeno delay para efeito)
-      setTimeout(() => {
-        barra.style.width = `${r.eficiencia}%`;
-        barra.style.transition = "width 900ms ease";
-        barra.style.opacity = "0.35";
-      }, 80 + index * 80);
-    });
-
-  } catch (err) {
-    console.error("Erro ao gerar ranking:", err);
-    container.innerHTML = "<div class='produto-card'>Erro ao carregar ranking. Veja o console.</div>";
+    animate();
   }
-}
 
-// chama quando a página iniciar
-document.addEventListener("DOMContentLoaded", gerarRanking);
-</script>
+  // --- Tema Claro/Escuro ---
+  const toggle = document.createElement("button");
+  toggle.id = "toggleTheme";
+  toggle.className = "theme-toggle";
+  toggle.textContent = "🌙";
+  document.body.appendChild(toggle);
 
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<button id="toggleTheme" class="theme-toggle">🌙</button>
-<script>
-const toggle = document.getElementById("toggleTheme");
-
-function aplicarTema() {
-  const tema = localStorage.getItem("temaValitec") || "dark";
-  if (tema === "light") {
-    document.documentElement.classList.add("light-mode");
-    toggle.textContent = "🌙";
-  } else {
-    document.documentElement.classList.remove("light-mode");
-    toggle.textContent = "🔆";
+  function aplicarTema() {
+    const tema = localStorage.getItem("temaValitec") || "dark";
+    if (tema === "light") {
+      document.documentElement.classList.add("light-mode");
+      toggle.textContent = "🌙";
+    } else {
+      document.documentElement.classList.remove("light-mode");
+      toggle.textContent = "🔆";
+    }
   }
-}
-
-toggle.onclick = () => {
-  const atual = localStorage.getItem("temaValitec") || "dark";
-  const novo = (atual === "dark") ? "light" : "dark";
-  localStorage.setItem("temaValitec", novo);
+  toggle.onclick = () => {
+    const atual = localStorage.getItem("temaValitec") || "dark";
+    const novo = (atual === "dark") ? "light" : "dark";
+    localStorage.setItem("temaValitec", novo);
+    aplicarTema();
+  };
   aplicarTema();
-};
-
-aplicarTema();
-</script>
-
-
-
-
+  </script>
 </body>
 </html>
