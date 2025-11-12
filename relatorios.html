@@ -241,10 +241,117 @@ function atualizarResumo(dados) {
 }
 
 // ===== GRÁFICOS =====
-function criarGraficoComparativo(d){const c=document.getElementById("graficoComparativo").getContext("2d");new Chart(c,{type:"bar",data:{labels:d.map(x=>x.nome),datasets:[{label:"Produtos Totais",data:d.map(x=>x.total),backgroundColor:"rgba(0,200,255,0.6)"}]}});}
-function criarGraficoEficiencia(d){const c=document.getElementById("graficoEficiencia").getContext("2d");new Chart(c,{type:"radar",data:{labels:d.map(x=>x.nome),datasets:[{label:"Eficiência (%)",data:d.map(x=>x.eficiencia),borderColor:"#4eff9a",backgroundColor:"rgba(78,255,154,0.2)"}]}});}
-function criarGraficoSetores(d){const c=document.getElementById("graficoSetores").getContext("2d");const all={};d.forEach(x=>Object.entries(x.setores).forEach(([s,q])=>all[s]=(all[s]||0)+q));new Chart(c,{type:"pie",data:{labels:Object.keys(all),datasets:[{data:Object.values(all),backgroundColor:["#4eff9a","#00c8ff","#ffe66d","#ff9f43","#ff4d4d","#b86bff"]}]}});}
-function criarRanking(d){const c=document.getElementById("rankingLojas");c.innerHTML="";d.sort((a,b)=>b.eficiencia-a.eficiencia);d.forEach((x,i)=>{const cor=i==0?"#ffd700":i==1?"#c0c0c0":i==2?"#cd7f32":"#4eff9a";c.innerHTML+=`<div class='ranking-item'><strong>${i+1}º</strong> ${x.nome} — <span style='color:${cor}'>${x.eficiencia}%</span> (${x.total-x.rebaixados}/${x.total})</div>`});}
+
+// Guardar instâncias dos gráficos atuais
+let graficoComparativoAtual = null;
+let graficoEficienciaAtual = null;
+let graficoSetoresAtual = null;
+
+function criarGraficoComparativo(dados) {
+  const ctx = document.getElementById("graficoComparativo").getContext("2d");
+
+  // 🔄 Destroi gráfico anterior se existir
+  if (graficoComparativoAtual) graficoComparativoAtual.destroy();
+
+  graficoComparativoAtual = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: dados.map(x => x.nome),
+      datasets: [{
+        label: "Produtos Totais",
+        data: dados.map(x => x.total),
+        backgroundColor: "rgba(0,200,255,0.6)",
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: "#0a0f1f", titleColor: "#00c8ff", bodyColor: "#fff" }
+      },
+      scales: {
+        x: { ticks: { color: "#9fdfff" } },
+        y: { ticks: { color: "#9fdfff" } }
+      }
+    }
+  });
+}
+
+function criarGraficoEficiencia(dados) {
+  const ctx = document.getElementById("graficoEficiencia").getContext("2d");
+
+  if (graficoEficienciaAtual) graficoEficienciaAtual.destroy();
+
+  graficoEficienciaAtual = new Chart(ctx, {
+    type: "radar",
+    data: {
+      labels: dados.map(x => x.nome),
+      datasets: [{
+        label: "Eficiência (%)",
+        data: dados.map(x => x.eficiencia),
+        borderColor: "#4eff9a",
+        backgroundColor: "rgba(78,255,154,0.25)",
+        borderWidth: 2,
+        pointBackgroundColor: "#4eff9a"
+      }]
+    },
+    options: {
+      scales: { r: { angleLines: { color: "#1a253b" }, grid: { color: "#2c3a55" }, pointLabels: { color: "#9fdfff" } } },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+function criarGraficoSetores(dados) {
+  const ctx = document.getElementById("graficoSetores").getContext("2d");
+
+  if (graficoSetoresAtual) graficoSetoresAtual.destroy();
+
+  const todosSetores = {};
+  dados.forEach(x => Object.entries(x.setores).forEach(([setor, qnt]) => {
+    todosSetores[setor] = (todosSetores[setor] || 0) + qnt;
+  }));
+
+  graficoSetoresAtual = new Chart(ctx, {
+    type: "pie",
+    data: {
+      labels: Object.keys(todosSetores),
+      datasets: [{
+        data: Object.values(todosSetores),
+        backgroundColor: ["#4eff9a","#00c8ff","#ffe66d","#ff9f43","#ff4d4d","#b86bff","#6ac7ff","#ff94f3"]
+      }]
+    },
+    options: {
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: { color: "#fff" }
+        }
+      }
+    }
+  });
+}
+
+function criarRanking(dados) {
+  const container = document.getElementById("rankingLojas");
+  container.innerHTML = "";
+
+  dados.sort((a, b) => b.eficiencia - a.eficiencia);
+
+  dados.forEach((d, i) => {
+    const cor = i === 0 ? "#ffd700" : i === 1 ? "#c0c0c0" : i === 2 ? "#cd7f32" : "#4eff9a";
+    const item = document.createElement("div");
+    item.className = "ranking-item";
+    item.innerHTML = `
+      <strong>${i + 1}º</strong> ${d.nome} — 
+      <span style="color:${cor}">${d.eficiencia}%</span> 
+      (${d.total - d.rebaixados}/${d.total} válidos)
+    `;
+    container.appendChild(item);
+  });
+}
+
 
 // ===== EXPORTAÇÕES =====
 document.getElementById("exportPDF").onclick=async()=>{const{jsPDF}=window.jspdf;const pdf=new jsPDF("p","pt","a4");const content=document.getElementById("relatoriosContent");const canvas=await html2canvas(content,{scale:2});const img=canvas.toDataURL("image/png");const w=pdf.internal.pageSize.getWidth();const h=(canvas.height*w)/canvas.width;pdf.addImage(img,"PNG",20,20,w-40,h);pdf.save(`Relatorio_ValiTec_${new Date().toLocaleDateString()}.pdf`);}
